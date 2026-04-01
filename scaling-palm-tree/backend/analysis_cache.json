@@ -1,0 +1,317 @@
+{
+  "69c5053f16599deb6989b10b": {
+    "conversation_id": "69c5053f16599deb6989b10b",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "General",
+      "User_Satisfaction_Score": 5,
+      "Hallucination_Detected": false,
+      "Hallucination_Reason": "None",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI should proactively offer a link to the order tracking portal or provide a secondary authentication method if the user does not have the phone number handy.",
+      "Sentiment_Shift": "Neutral to Neutral",
+      "Bottleneck": "Manual data entry requirement",
+      "Root_Cause": "Lack of integrated session-based order lookup",
+      "Summary_Insights": "The agent successfully initiated a standard verification protocol but failed to provide a frictionless self-service path for the user.",
+      "Primary_Inquiry_Type": "Order Status",
+      "Product_Mentioned": "None"
+    }
+  },
+  "69c5053706069052a32e9faa": {
+    "conversation_id": "69c5053706069052a32e9faa",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 4,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent unilaterally defined the user's intent as 'Belly Fat Herbal Tea' without confirmation, and stated a rigid 'no returns' policy without verifying the specific order status or company policy documentation.",
+      "Checkout_Friction_Detected": true,
+      "User_Frustration_Point": "Inability to initiate return process or receive direct support via WhatsApp",
+      "Agent_Improvement_Rule": "AI must verify order status before citing return policies and should provide a direct link or deep-link to the WhatsApp support channel rather than forcing manual contact.",
+      "Sentiment_Shift": "Neutral to Frustrated",
+      "Bottleneck": "Lack of integration between the chat interface and the returns/support ticketing system.",
+      "Root_Cause": "Agent assumes authority to interpret user intent and enforce policy without backend validation.",
+      "Summary_Insights": "The agent failed to provide a seamless resolution for a return request, instead pushing the user to manual support channels while making unverified assumptions about the user's desired product.",
+      "Primary_Inquiry_Type": "Return/Exchange",
+      "Product_Mentioned": "Blue Tea, Belly Fat Herbal Tea"
+    }
+  },
+  "69c502e516599deb6989b0da": {
+    "conversation_id": "69c502e516599deb6989b0da",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "General",
+      "User_Satisfaction_Score": 1,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The transcript shows a quick_action_click event without any preceding context or agent response, implying the AI failed to initiate the session or provide the requested service, rendering any subsequent automated price or policy display as unverified/hallucinated by default.",
+      "Checkout_Friction_Detected": true,
+      "User_Frustration_Point": "Session Initialization Failure",
+      "Agent_Improvement_Rule": "AI must validate session state before triggering quick actions and provide a fallback error message if the backend service is unreachable.",
+      "Sentiment_Shift": "Neutral to Frustrated",
+      "Bottleneck": "Event trigger execution",
+      "Root_Cause": "Null pointer or timeout in the quick_action_click handler",
+      "Summary_Insights": "The session failed to initialize upon the user's interaction, resulting in a complete breakdown of the AI's ability to assist.",
+      "Primary_Inquiry_Type": "System Interaction",
+      "Product_Mentioned": "None"
+    }
+  },
+  "69c501db06069052a32e3d9a": {
+    "conversation_id": "69c501db06069052a32e3d9a",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 4,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes unverified medical claims by labeling products as 'weight-loss focused' and 'fat reduction' agents without medical disclaimers, potentially violating health compliance standards.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include mandatory medical disclaimers when discussing weight loss and avoid making definitive health claims regarding metabolism or fat reduction.",
+      "Sentiment_Shift": "Neutral to Skeptical",
+      "Bottleneck": "Lack of medical compliance guardrails in the response generation.",
+      "Root_Cause": "Over-reliance on marketing copy as factual medical advice.",
+      "Summary_Insights": "The agent prioritizes aggressive product upselling over addressing the user's specific concern about long-term dependency, while failing to provide necessary health disclaimers.",
+      "Primary_Inquiry_Type": "Product Consultation",
+      "Product_Mentioned": "Butterfly Pea Flower Herbal Tea, Slim Herbal Tea, Belly Fat Herbal Tea"
+    }
+  },
+  "69c4faa716599deb6989b00c": {
+    "conversation_id": "69c4faa716599deb6989b00c",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 6,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent listed 'Acid Ease Herbal Tea' with a price of \u20b90.00, which is a pricing hallucination. Additionally, the agent provided different tracking links for the same order number across different turns, suggesting inconsistent data retrieval.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "Implement a strict validation layer to prevent the display of zero-value items and ensure tracking link consistency by mapping order IDs to a single source of truth.",
+      "Sentiment_Shift": "Neutral to Neutral",
+      "Bottleneck": "Data integrity in the order details retrieval module.",
+      "Root_Cause": "Backend API inconsistency or faulty data parsing logic in the order summary generation.",
+      "Summary_Insights": "While the agent successfully retrieved order statuses, it displayed erroneous pricing data for a product, indicating a failure in data validation protocols.",
+      "Primary_Inquiry_Type": "Order Tracking",
+      "Product_Mentioned": "Skin Glow Herbal Tea, Belly Fat Monthly Pack, Acid Ease Herbal Tea, Gut Cleanse Herbal Tea, She Balance Herbal Tea"
+    }
+  },
+  "69c4f99b16599deb6989b003": {
+    "conversation_id": "69c4f99b16599deb6989b003",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 6,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent displayed a total amount of \u20b9779.00 but listed the product price as \u20b9799.00, indicating a data inconsistency or calculation hallucination. Additionally, the order date is set in the future (2026-03-22).",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must validate order date logic to prevent future-dated entries and ensure total amount calculations match individual line item prices before display.",
+      "Sentiment_Shift": "Neutral to Satisfied",
+      "Bottleneck": "Data synchronization between order database and UI display layer",
+      "Root_Cause": "Backend data integrity failure resulting in mismatched pricing and invalid date formatting.",
+      "Summary_Insights": "The agent successfully retrieved order information but provided conflicting financial data and an impossible order date, undermining system credibility.",
+      "Primary_Inquiry_Type": "Order Tracking",
+      "Product_Mentioned": "Belly Fat Herbal Tea - 60 Tea Bags"
+    }
+  },
+  "69c4f8e516599deb6989affe": {
+    "conversation_id": "69c4f8e516599deb6989affe",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "General",
+      "User_Satisfaction_Score": 2,
+      "Hallucination_Detected": false,
+      "Hallucination_Reason": "None",
+      "Checkout_Friction_Detected": true,
+      "User_Frustration_Point": "Repetitive Loop / Failure to recognize context",
+      "Agent_Improvement_Rule": "Implement state management to recognize repeat queries and escalate to a human agent or provide a direct link to the order status page after the first failed attempt.",
+      "Sentiment_Shift": "Neutral to Frustrated",
+      "Bottleneck": "The agent lacks conversational memory and fails to provide a fallback mechanism for order tracking.",
+      "Root_Cause": "Hard-coded response loop without intent-based escalation or context awareness.",
+      "Summary_Insights": "The agent is stuck in a repetitive loop, failing to assist the user or provide alternative support channels after the initial request.",
+      "Primary_Inquiry_Type": "Order Tracking",
+      "Product_Mentioned": "None"
+    }
+  },
+  "69c4f08506069052a32ba65f": {
+    "conversation_id": "69c4f08506069052a32ba65f",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 8,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent claims Butterfly Pea tea 'aids weight management naturally' and 'supports detox', which are unverified medical/health claims that could be flagged as regulatory non-compliance or medical hallucination.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include a mandatory medical disclaimer when discussing health benefits and avoid making definitive medical claims regarding weight loss or detoxification.",
+      "Sentiment_Shift": "Neutral to Positive",
+      "Bottleneck": "None",
+      "Root_Cause": "None",
+      "Summary_Insights": "The agent successfully provided relevant product recommendations based on user queries but utilized potentially non-compliant health benefit claims.",
+      "Primary_Inquiry_Type": "Product Recommendation",
+      "Product_Mentioned": "Gut Cleanse Herbal Tea, Butterfly Pea Flower Herbal Tea"
+    }
+  },
+  "69c4ef2306069052a32b5ccf": {
+    "conversation_id": "69c4ef2306069052a32b5ccf",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 8,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes a definitive medical claim that the product 'burns fat effectively,' which is an unverified health benefit and potentially violates medical disclaimer policies for e-commerce supplements.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include a mandatory medical disclaimer when discussing weight loss products and avoid making absolute efficacy claims like 'burns fat effectively' to remain compliant with health regulations.",
+      "Sentiment_Shift": "Neutral to Positive",
+      "Bottleneck": "None",
+      "Root_Cause": "Lack of guardrails regarding medical/health-related marketing claims.",
+      "Summary_Insights": "The agent successfully provided relevant product recommendations but failed to adhere to compliance standards by making unverified health efficacy claims.",
+      "Primary_Inquiry_Type": "Product Recommendation",
+      "Product_Mentioned": "Belly Fat Monthly Pack, Belly Fat Herbal Tea"
+    }
+  },
+  "69c4edd706069052a32ae7a8": {
+    "conversation_id": "69c4edd706069052a32ae7a8",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 6,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent claims 'The key is consistency with the herbal infusion itself, not necessarily daily exercise,' which is a medically unverified health claim that could be interpreted as a promise of weight loss without physical activity.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must strictly adhere to medical disclaimers and avoid making health-related efficacy claims; it should explicitly state that results vary and are not a substitute for medical advice or exercise.",
+      "Sentiment_Shift": "Neutral to Neutral",
+      "Bottleneck": "Inability to facilitate direct human-to-human contact (phone call) requested by the user.",
+      "Root_Cause": "Lack of integration with a telephony or callback service.",
+      "Summary_Insights": "The agent successfully provided product information but failed to manage user expectations regarding health claims and could not fulfill the user's request for a phone call.",
+      "Primary_Inquiry_Type": "Product Efficacy Inquiry",
+      "Product_Mentioned": "Slim Herbal Tea"
+    }
+  },
+  "69c4ed2706069052a32acd31": {
+    "conversation_id": "69c4ed2706069052a32acd31",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 9,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes unverified medical claims regarding weight loss ('Boosting metabolism', 'Burning fat efficiently', 'Flushing toxins') which are not clinically substantiated and could be interpreted as medical advice. Additionally, the specific rating '4.85/5' is a dynamic value that may not reflect real-time data accuracy.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include a mandatory medical disclaimer when discussing weight loss or health benefits and avoid making definitive physiological claims about metabolism or fat burning.",
+      "Sentiment_Shift": "Neutral to Positive",
+      "Bottleneck": "None",
+      "Root_Cause": "Over-promising on health outcomes to drive conversion.",
+      "Summary_Insights": "The agent successfully identified a relevant product for the user's specific postpartum needs but utilized potentially misleading health claims that violate standard compliance protocols.",
+      "Primary_Inquiry_Type": "Product Recommendation",
+      "Product_Mentioned": "Belly Fat Monthly Pack - 120 Tea Bags"
+    }
+  },
+  "69c4e51406069052a329e000": {
+    "conversation_id": "69c4e51406069052a329e000",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 8,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes unverified medical claims ('burn fat', 'flushes toxins') and provides specific dosage instructions ('3 cups daily') without a medical disclaimer, which constitutes a high-risk hallucination regarding product efficacy.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include a mandatory medical disclaimer for all health-related products and avoid making definitive physiological claims like 'burn fat' or 'flush toxins' to ensure regulatory compliance.",
+      "Sentiment_Shift": "Neutral to Positive",
+      "Bottleneck": "Lack of medical disclaimer integration in the product recommendation flow.",
+      "Root_Cause": "Over-reliance on marketing copy in the knowledge base without safety guardrails for health claims.",
+      "Summary_Insights": "The agent successfully provided relevant product recommendations but failed to adhere to safety protocols by making unsubstantiated medical claims regarding weight loss.",
+      "Primary_Inquiry_Type": "Product Recommendation",
+      "Product_Mentioned": "Belly Fat Monthly Pack - 120 Tea Bags"
+    }
+  },
+  "69c4e46006069052a329cdc0": {
+    "conversation_id": "69c4e46006069052a329cdc0",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 6,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes unverified medical claims ('melts fat', 'burns fat', 'boosts metabolism') which are not clinically substantiated and could be considered deceptive health marketing. Additionally, the agent claims 60 tea bags last a 'full month' (implying 2 bags/day) while the product description for the same item is often used for single-cup servings, creating a potential discrepancy in usage instructions.",
+      "Checkout_Friction_Detected": true,
+      "User_Frustration_Point": "Price sensitivity and lack of affordable options",
+      "Agent_Improvement_Rule": "AI must be restricted from making definitive medical efficacy claims (e.g., 'melts fat') and should instead use compliant language like 'supports wellness' or 'may assist with diet'.",
+      "Sentiment_Shift": "Neutral to Frustrated to Resigned",
+      "Bottleneck": "The agent failed to convert the user because the price point remained above the user's stated budget threshold despite offering discounts.",
+      "Root_Cause": "Over-reliance on aggressive sales scripts and medical-sounding claims rather than addressing the user's specific budget constraints effectively.",
+      "Summary_Insights": "The agent successfully provided product information but failed to close the sale due to a mismatch between the user's budget and the product pricing, compounded by potentially non-compliant health claims.",
+      "Primary_Inquiry_Type": "Product Recommendation and Pricing",
+      "Product_Mentioned": "Belly Fat Herbal Tea, Butterfly Pea Flower Herbal Tea, Slim Herbal Tea, Butterfly Pea Lemongrass, Hibiscus Flower Tea"
+    }
+  },
+  "69c4e42906069052a329c6f9": {
+    "conversation_id": "69c4e42906069052a329c6f9",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": true,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "Healthcare",
+      "User_Satisfaction_Score": 7,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The agent makes unverified medical claims by stating the tea 'burns fat' and 'reduces bloating,' which are unsubstantiated health benefits that could violate regulatory compliance for food/supplement marketing.",
+      "Checkout_Friction_Detected": false,
+      "User_Frustration_Point": "None",
+      "Agent_Improvement_Rule": "AI must include a mandatory medical disclaimer when discussing weight loss products and avoid making definitive physiological claims like 'burns fat' or 'reduces bloating' to remain compliant with health advertising standards.",
+      "Sentiment_Shift": "Neutral to Positive",
+      "Bottleneck": "Regulatory compliance in product descriptions",
+      "Root_Cause": "Over-promising AI response generation regarding health benefits",
+      "Summary_Insights": "The agent successfully provided relevant product links but failed to maintain professional boundaries by making unsubstantiated medical claims regarding weight loss.",
+      "Primary_Inquiry_Type": "Product Recommendation",
+      "Product_Mentioned": "Butterfly Pea Flower Herbal Tea, Slim Herbal Tea, Belly Fat Monthly Pack, Belly Fat Herbal Tea"
+    }
+  },
+  "69c4e2ec16599deb6989ae92": {
+    "conversation_id": "69c4e2ec16599deb6989ae92",
+    "widget_id": "680a0a8b70a26f7a0e24eedd",
+    "dropoff": false,
+    "loop_detected": false,
+    "evaluation": {
+      "Category": "General",
+      "User_Satisfaction_Score": 1,
+      "Hallucination_Detected": true,
+      "Hallucination_Reason": "The transcript shows a quick_action_click event without any preceding context or agent response, implying the AI failed to initiate the session or provide the requested return policy, rendering any subsequent automated price or policy confirmation inherently unverified.",
+      "Checkout_Friction_Detected": true,
+      "User_Frustration_Point": "Session Initialization Failure",
+      "Agent_Improvement_Rule": "AI must validate session state before triggering quick actions and provide a fallback response if the backend fails to retrieve specific policy data.",
+      "Sentiment_Shift": "Neutral to Frustrated",
+      "Bottleneck": "Event trigger execution without state verification",
+      "Root_Cause": "Missing context injection in the chat session handler",
+      "Summary_Insights": "The session failed to initialize properly, leading to a dead-end interaction where the user's intent was ignored by the system.",
+      "Primary_Inquiry_Type": "Return Request",
+      "Product_Mentioned": "None"
+    }
+  }
+}
