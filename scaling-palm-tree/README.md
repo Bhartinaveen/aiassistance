@@ -1,73 +1,118 @@
-# Nvn..B OS: AI-Powered Behavioral Analytics & QA Suite
+# 🌌 Nvn..B OS: AI-Powered Behavioral Analytics & QA Suite
 
+![Project Status](https://img.shields.io/badge/Status-Production--Ready-success?style=for-the-badge&logo=rocket)
+![AI Model](https://img.shields.io/badge/AI-Gemini%201.5%20Pro-orange?style=for-the-badge&logo=google-gemini)
+![Frontend](https://img.shields.io/badge/UI-Next.js%2014%20Glassmorphic-6366f1?style=for-the-badge&logo=next.js)
+![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
 
-**Nvn..B OS** is a specialized high-level AI Quality Assurance (QA) Engine. Developed for e-commerce brands, its primary function is to transform raw, unstructured chat logs into a professional, data-driven "Health Report," identifying sales friction and optimizing AI performance.
-
----
-
-## 🧐 The Problem & Our Solution
-
-### **The Problem**
-Brands deploying AI agents often struggle to monitor them at scale. Issues like "Checkout Friction" (where AI blocks a sale) or "Hallucination" (where AI gives false info) often go undetected, leading to lost revenue and customer frustration.
-
-### **The Solution**
-**Nvn..B OS** automate the audit process. It doesn't just track metrics; it **understands behavior**. By reconstructing the "Story" of every customer journey, the engine identifies exactly *why* a sale failed and *how* to fix the AI's logic.
+**Nvn..B OS** is a premium, consultant-grade AI Quality Assurance (QA) and Behavioral Analytics engine. Built for high-volume e-commerce brands, it transforms raw, unstructured chat logs into actionable intelligence reports, identifying sales friction and optimizing AI performance in real-time.
 
 ---
 
-## 🛠️ Technical Implementation
+## 🏛️ System Architecture
 
-### **1. Backend: The Intelligence Layer (FastAPI)**
-- **Data Orchestration**: A customized "Story Builder" that re-indexes raw JSON message dumps into chronological, identity-linked transcripts.
-- **Master Evaluation Engine**: Powered by **Gemini 1.5 Pro**, our specialized prompt triggers a multi-dimensional audit pass (Intent, Sentiment, Accuracy, and Logic).
-- **Persistent Caching**: Utilizes a local JSON caching system (`analysis_cache.json`) to minimize latency and ensure the dashboard is responsive.
+The project follows a **Decoupled Intelligence Architecture**, separating data reconstruction from high-fidelity visualization:
 
-### **2. Frontend: Sales Intelligence Dashboard (Next.js)**
-- **Glassmorphic UI**: A premium, high-fidelity design system focused on visual clarity.
-- **Inquiry Intent Map**: Visualizes the distribution of user needs (Ordering, Support, Inquiry).
-- **Product Interest Cloud**: Identifies which items are trending in customer conversations.
-- **Checkout Friction Feed**: A live diagnostic feed with "Agent Improvement Rules" for developers to implement immediately.
+- **The "Story" Builder (Backend)**: Reconstructs fragmented chat sessions into chronological transcripts, linking events (clicks, views) with human-AI dialogue.
+- **The Multi-Level Analysis Engine**: Processes transcripts through three filters:
+  1.  **Zero-Shot Categorization**: Automatically discovers customer intent types.
+  2.  **Safety & Accuracy Scan**: Detects hallucinations and medical/legal compliance risks.
+  3.  **Behavioral Audit**: Scores user satisfaction and identifies dropout causes.
+- **The Analytics Dashboard (Frontend)**: A glassmorphic React interface that turns AI results into the "Model Weakness Radar" and "Issue Density Heatmaps."
 
 ---
 
-## 🔄 Project Workflow (End-to-End)
+## 🔥 Key Features
 
-1.  **Ingestion**: Raw chat logs are ingested via the API from the brand's message database.
-2.  **Reconstruction**: The backend groups messages by `conversationId` and sorts them to provide the AI with full conversational context.
-3.  **Auditing**: The transcript is passed through our **Senior QA Lead AI persona**, which detects:
-    - **Friction Points**: Technical or logical hurdles in checkout.
-    - **Hallucinations**: False links or product claims.
-    - **Weakness Radar**: Cognitive areas where the AI needs more training.
-4.  **Reporting**: Final analytics are pushed to the dashboard, where they are visualized through high-contrast charts.
+### 🚀 Real-Time Issues Feed
+Surfaces critical AI failures (hallucinations, loops, user drop-offs) with **Fix Recommendations** for developers.
+
+### 🧠 Model Weakness Radar
+A 5-axis performance graph analyzing:
+- **Satisfaction**: User happiness scores.
+- **Accuracy**: Inverse hallucination rate.
+- **Retention**: Resistance to user drop-offs.
+- **Compliance**: Adherence to brand guardrails.
+- **Engagement**: Quality of AI-user interaction.
+
+### 📊 Behavioral Intent Mapping
+Visualizes **Inquiry Intent** (Ordering, Supporting, Consulting) using dynamic bar charts, replacing generic pie charts for better readability.
+
+### 🌡️ Issue Density Heatmap (Treemap)
+A sophisticated grid visualization where the **area represents the frequency** of specific micro-issues (e.g., "medical claims", "pricing errors").
 
 ---
 
-## 🚀 How to Run the Project
+## 🛠️ Tech Stack
 
-### **Step 1: Backend Setup**
+- **Core**: Python (FastAPI), React (Next.js 14)
+- **AI/LLM**: Google Generative AI (Gemini 1.5 Pro), LangChain
+- **Styling**: Tailwind CSS, Framer Motion (Animations)
+- **Charts**: Recharts (Custom Glassmorphic implementations)
+- **Persistence**: Local Persistent Caching & MongoDB Integration
+
+---
+
+## 🚀 Installation & Local Setup
+
+### **Prerequisites**
+- Python 3.9+ 
+- Node.js 18+ 
+- Google Gemini API Key
+
+### **Step 1: Cloning the Project**
 ```bash
-cd scaling-palm-tree/backend
-py -m venv .venv
-source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
-pip install -r requirements.txt
-# Ensure your GEMINI_API_KEY is in the .env file
-uvicorn app.main:app --reload
+git clone https://github.com/Bhartinaveen/aiassistance.git
+cd aiassistance/scaling-palm-tree
 ```
 
-### **Step 2: Frontend Setup**
-```bash
-cd scaling-palm-tree/frontend
-npm install
-npm run dev
-```
+### **Step 2: Backend Configuration**
+1. Navigate to the backend folder:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   py -m venv .venv
+   .venv\Scripts\activate  # Windows
+   # source .venv/bin/activate  # Linux/Mac
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file and add your API key:
+   ```env
+   GEMINI_API_KEY=your_gemini_key_here
+   ```
+5. Launch the backend:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+### **Step 3: Frontend Configuration**
+1. Open a new terminal in the frontend folder:
+   ```bash
+   cd ../frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
 Open [http://localhost:3000](http://localhost:3000) to view the **Nvn..B OS** Dashboard.
 
 ---
 
-## 📊 Analytical Metrics Tracked
-- **AI Quality Score**: Aggregate performance metric based on sentiment and accuracy.
-- **Purchase Intent**: Percentage of users moving toward checkout.
-- **Model Weakness Radar**: 5-point analysis of AI persona, product knowledge, tone, and logic.
+## 📝 Analytical Methodology
+The system uses the **Senior QA Lead AI Persona** to audit sessions. Each analysis includes:
+- **Satisfaction Scoring (1-10)**: Calculated based on sentiment shift and query resolution.
+- **Hallucination Detection**: Comparison of AI output against verified catalog data.
+- **Dropout Reason Identification**: Root cause analysis for abandoned checkouts.
 
 ---
 © 2026 **Nvn..B RESEARCH LABS** // All Rights Reserved
