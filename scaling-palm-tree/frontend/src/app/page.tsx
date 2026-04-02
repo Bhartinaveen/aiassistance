@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Activity, AlertTriangle, Zap, ShoppingBag, TrendingUp, Cpu, Info } from "lucide-react";
+import { Activity, AlertTriangle, Zap, ShoppingBag, TrendingUp, Cpu, Info } from "lucide-react";
 
 import InquiryIntentChart from '@/components/InquiryIntentChart';
 import ProductInterestCloud from '@/components/ProductInterestCloud';
@@ -101,20 +101,33 @@ export default function Home() {
           <div className="space-y-8 pb-32">
             {/* Top Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-entry" style={{ animationDelay: '0.1s' }}>
-              {[
-                { label: "AI Quality Score", value: "94.2%", icon: Zap, color: "text-yellow-400" },
-                { label: "User Frustration", value: "12.4%", icon: Activity, color: "text-red-400" },
-                { label: "Purchase Intent", value: "68.1%", icon: ShoppingBag, color: "text-green-400" },
-                { label: "Data Integrity", value: "99.8%", icon: Info, color: "text-blue-400" },
-              ].map((stat, i) => (
-                <div key={i} className="p-4 rounded-3xl glass-card flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
-                  <div>
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">{stat.label}</span>
-                    <span className="text-xl font-black text-white/90">{stat.value}</span>
+              {(() => {
+                const total = data.length || 1;
+                const avgScore = data.length > 0
+                  ? (data.reduce((sum, d) => sum + (d.evaluation?.User_Satisfaction_Score || 0), 0) / total).toFixed(1)
+                  : "0";
+                const hallucinationRate = data.length > 0
+                  ? ((data.filter(d => d.evaluation?.Hallucination_Detected === true).length / total) * 100).toFixed(1)
+                  : "0";
+                const dropoffRate = data.length > 0
+                  ? ((data.filter(d => d.dropoff === true).length / total) * 100).toFixed(1)
+                  : "0";
+
+                return [
+                  { label: "Avg Satisfaction", value: `${avgScore}/10`, icon: Zap, color: "text-yellow-400" },
+                  { label: "Hallucination Rate", value: `${hallucinationRate}%`, icon: AlertTriangle, color: "text-red-400" },
+                  { label: "Dropout Rate", value: `${dropoffRate}%`, icon: Activity, color: "text-orange-400" },
+                  { label: "Conversations", value: `${data.length}`, icon: Info, color: "text-blue-400" },
+                ].map((stat, i) => (
+                  <div key={i} className="p-4 rounded-3xl glass-card flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
+                    <div>
+                      <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">{stat.label}</span>
+                      <span className="text-xl font-black text-white/90">{stat.value}</span>
+                    </div>
+                    <stat.icon size={20} className={`${stat.color} opacity-40 group-hover:opacity-100 transition-opacity`} />
                   </div>
-                  <stat.icon size={20} className={`${stat.color} opacity-40 group-hover:opacity-100 transition-opacity`} />
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             {/* Main Visualizations Grid */}
@@ -156,7 +169,7 @@ export default function Home() {
               </div>
 
               {/* Right Column: Checkout Friction Feed */}
-              <div className="lg:col-span-4 h-full min-h-[600px] animate-entry" style={{ animationDelay: '0.5s' }}>
+              <div className="lg:col-span-4 h-[600px] max-h-[600px] animate-entry" style={{ animationDelay: '0.5s' }}>
                 <CheckoutFrictionAlerts data={data} />
               </div>
             </div>

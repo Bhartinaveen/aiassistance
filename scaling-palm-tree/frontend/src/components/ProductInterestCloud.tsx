@@ -1,40 +1,106 @@
 "use client";
 
-import { motion } from 'framer-motion';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
+
+const COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8', '#fb923c', '#e879f9', '#4ade80', '#2dd4bf'];
 
 export default function ProductInterestCloud({ data }: { data: any[] }) {
-  // Aggregate products mentioned during chat
+  // Aggregate products mentioned during chat — split comma-separated lists
   const productCount: Record<string, number> = {};
-  
+
   data.forEach(d => {
-    const product = d.evaluation?.Product_Mentioned || "None";
-    if (product !== "None" && product !== "Other") {
-      productCount[product] = (productCount[product] || 0) + 1;
-    }
+    const raw = d.evaluation?.Product_Mentioned || "None";
+    if (raw === "None" || raw === "Other") return;
+
+    // Split by comma since LLM returns "Product A, Product B"
+    raw.split(',').forEach((p: string) => {
+      const product = p.trim();
+      if (product && product !== "None") {
+        productCount[product] = (productCount[product] || 0) + 1;
+      }
+    });
   });
 
-  const products = Object.entries(productCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
+  const chartData = Object.entries(productCount)
+    .map(([name, count]) => ({
+      name: name.length > 25 ? name.slice(0, 22) + "…" : name,
+      fullName: name,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8); // Top 8 products for clarity
 
   return (
-    <div className="w-full h-full min-h-[300px] flex flex-col p-6">
-      <h3 className="text-white/70 text-sm font-medium mb-4">Trending Product Interests</h3>
-      <div className="flex-1 flex flex-wrap gap-3 items-center justify-center">
-        {products.length > 0 ? (
-          products.map(([name, count], i) => (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              key={name}
-              className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-white/90 shadow-lg hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all cursor-default"
-              style={{ fontSize: `${Math.max(12, Math.min(24, 12 + count * 2))}px` }}
+    <div className="w-full h-full flex flex-col p-6 overflow-hidden">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-white/70 text-sm font-medium">Trending Product Interests</h3>
+        <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Top 8 Products</span>
+      </div>
+      
+      <div className="flex-1 min-h-[300px]">
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={{ top: 5, right: 40, left: 0, bottom: 5 }}
             >
-              {name} <span className="text-[0.6em] text-white/40 ml-1">{count}</span>
-            </motion.div>
-          ))
+              <defs>
+                {chartData.map((_, index) => (
+                  <linearGradient key={`gradient-${index}`} id={`colorGradient-${index}`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.8} />
+                    <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.2} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={150}
+                tick={{ fill: '#ffffff90', fontSize: 11, fontWeight: 600 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#171717',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+                }}
+                itemStyle={{ color: '#fff', fontSize: '12px' }}
+                cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                formatter={(value: number, _name: string, props: any) => [
+                  `${value} Mentions`,
+                  props.payload.fullName
+                ]}
+              />
+              <Bar 
+                dataKey="count" 
+                radius={[0, 10, 10, 0]} 
+                barSize={18}
+                animationDuration={1500}
+              >
+                {chartData.map((_, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={`url(#colorGradient-${index})`}
+                    className="hover:opacity-80 transition-opacity cursor-pointer"
+                  />
+                ))}
+                <LabelList 
+                  dataKey="count" 
+                  position="right" 
+                  style={{ fill: '#ffffff60', fontSize: 10, fontWeight: 700 }} 
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         ) : (
-          <div className="text-white/30 text-sm italic">No specific products tracked yet...</div>
+          <div className="flex items-center justify-center h-full text-white/20 text-sm italic">
+            No specific products tracked in this batch...
+          </div>
         )}
       </div>
     </div>
