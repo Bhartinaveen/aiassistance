@@ -17,7 +17,8 @@ export default function Home() {
   const [selectedBrand, setSelectedBrand] = useState<string>("All Brands");
 
   useEffect(() => {
-    fetch("https://aiassistance-kfib.onrender.com/api/analysis/run")
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${apiUrl}/api/analysis/run`)
       .then(res => res.json())
       .then(resData => {
         if (resData.status === "success") {
