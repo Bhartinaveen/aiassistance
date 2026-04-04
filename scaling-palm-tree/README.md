@@ -115,7 +115,8 @@ The system uses the **Senior QA Lead AI Persona** to audit sessions. Each analys
 - **Dropout Reason Identification**: Root cause analysis for abandoned checkouts.
 
 ---
-## images of the project
+## images of the  this project
+
 
 ![alt text](screencapture-localhost-3000-2026-04-02-15_24_49.png)
 ## Ai agent chat with user
