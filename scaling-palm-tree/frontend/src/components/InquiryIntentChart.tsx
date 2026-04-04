@@ -56,7 +56,7 @@ export default function InquiryIntentChart({ data }: { data: any[] }) {
                 padding: '8px 12px',
               }}
               itemStyle={{ color: '#fff', fontSize: '12px' }}
-              formatter={(value: number, _name: string, props: any) => [
+              formatter={(value: any, name: any, props: any) => [
                 `${value} conversation${value > 1 ? 's' : ''}`,
                 props.payload.fullName,
               ]}

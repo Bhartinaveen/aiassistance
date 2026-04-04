@@ -71,7 +71,7 @@ export default function ProductInterestCloud({ data }: { data: any[] }) {
                 }}
                 itemStyle={{ color: '#fff', fontSize: '12px' }}
                 cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                formatter={(value: number, _name: string, props: any) => [
+                formatter={(value: any, name: any, props: any) => [
                   `${value} Mentions`,
                   props.payload.fullName
                 ]}
