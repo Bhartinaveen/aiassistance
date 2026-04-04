@@ -11,9 +11,7 @@ load_dotenv()
 from app.services.data_orchestration import fetch_all_conversations, get_conversation_transcript
 from app.services.analysis_engine import analyze_transcript
 from app.services.chat_agent import process_chat_query
-from app.services.cache_manager import save_to_cache, get_cached_analysis
-
-CACHE_FILE = "analysis_cache.json"
+from app.services.cache_manager import save_to_cache, get_cached_analysis, clear_cache
 
 class ChatRequest(BaseModel):
     query: str
@@ -24,24 +22,34 @@ recent_cache_data = []
 app = FastAPI(title="AI QA & Analytics Engine")
 
 @app.on_event("startup")
-def clear_cache_on_startup():
-    """Clear old analysis cache on every restart so conversations are re-processed through LLM."""
-    from app.services.data_orchestration import _conversations_cache, _messages_cache
+async def initialize_state():
+    """
+    Called on FastAPI startup.
+    - Connects to Atlas and loads conversations/messages into memory.
+    - Fetches all PREVIOUSLY analyzed reports from MongoDB so the dashboard 
+      and chat agent have data immediately, instead of waiting for a fresh run.
+    """
+    from app.services.data_orchestration import initialize_data, _conversations_cache, _messages_cache
+    from app.services.cache_manager import get_all_cached_reports
     
-    if os.path.exists(CACHE_FILE):
-        os.remove(CACHE_FILE)
-        print(f"\n🗑️  Previous analysis cache cleared — fresh LLM analysis will run on next request")
-    else:
-        print(f"\n📭 No previous cache found — ready for fresh analysis")
+    # 1. Clear previous analysis cache to ensure fresh "scraping"
+    await clear_cache()
     
-    # Show which conversations will be analyzed
+    # 2. Initialize MongoDB connection and core data (conversations/messages)
+    await initialize_data()
+    
+    # 3. Trigger a fresh analysis run in the background immediately
+    print(f"🚀 AUTO-SCRAP: Triggering background AI analysis on startup...\n")
+    asyncio.create_task(run_analysis())
+    
+    # 4. Show target summary (top 20) for review
     start, end = 0, 20
     total = len(_conversations_cache)
     actual_end = min(end, total)
     batch = _conversations_cache[start:actual_end]
     
     if batch:
-        print(f"\n{'='*70}")
+        print(f"{'='*70}")
         print(f"📦 TARGET CONVERSATIONS: #{start+1} to #{actual_end} (out of {total} total)")
         print(f"{'='*70}")
         print(f"{'#':<5} {'Conversation ID':<30} {'Widget/Brand':<28} {'Created'}")
@@ -63,7 +71,7 @@ def clear_cache_on_startup():
         print(f"{'─'*70}")
         print(f"📊 Total messages across these {len(batch)} conversations: {total_msgs}")
         print(f"{'='*70}")
-        print(f"\n⏳ Waiting for frontend to trigger analysis at /api/analysis/run ...\n")
+        print(f"\n⚡ SYSTEM READY — Background analysis is active. Dashboard will update live.\n")
 
 # Allow CORS for Next.js frontend
 app.add_middleware(
@@ -91,7 +99,7 @@ async def run_analysis():
     print(f"{'🚀'*20}\n")
     
     conversations = await fetch_all_conversations()
-    cache = get_cached_analysis()
+    cache = await get_cached_analysis()
     
     print(f"📋 Cache status: {len(cache)} previously analyzed conversations found\n")
     
@@ -147,8 +155,8 @@ async def run_analysis():
         print(f"      Product:       {evaluation.get('Product_Mentioned', '?')}")
         print(f"      Dropoff:       {is_dropoff} | Loop: {loop_detected}")
         
-        # Save to persistent cache
-        save_to_cache(conv_id, report)
+        # Save to MongoDB
+        await save_to_cache(conv_id, report)
         reports.append(report)
         
         # Slight delay to respect Rate Limits only when hitting the AI

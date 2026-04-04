@@ -1,18 +1,24 @@
+"""
+analyze_batch.py — MongoDB Edition
+Fetches conversations/messages from MongoDB Atlas and saves results to a MongoDB collection.
+No local JSON files used.
+"""
 import os
 import json
 import asyncio
 import httpx
 from datetime import datetime
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # Load environment variables
 load_dotenv()
 
 # Constants
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Root: mlai/
-CONVERSATIONS_FILE = os.path.join(BASE_DIR, "conversations.json")
-MESSAGES_FILE = os.path.join(BASE_DIR, "messages.json")
+MONGO_URI = os.getenv("MONGO_URI", "")
+DB_NAME = "ai_analytics"
 API_KEY = os.getenv("GEMINI_API_KEY", "")
+RESULTS_COLLECTION = "batch_audit_results"
 
 async def get_transcript(conversation_id, messages_cache):
     """Reconstructs the transcript for a specific conversation ID."""
@@ -79,40 +85,63 @@ async def analyze_transcript(transcript, conv_id):
         return {"error": str(e)}
 
 async def main():
-    print(f"🚀 Starting Batch Analysis at {datetime.now()}")
+    print(f"🚀 Starting MongoDB Batch Analysis at {datetime.now()}")
     
-    # Load Data
-    with open(CONVERSATIONS_FILE, "r", encoding="utf-8") as f:
-        conversations = json.load(f)
-    with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
-        messages = json.load(f)
+    if not MONGO_URI:
+        print("❌ MONGO_URI missing")
+        return
+
+    client = AsyncIOMotorClient(MONGO_URI)
+    db = client[DB_NAME]
+    
+    # Load Data from MongoDB
+    print("📂 Fetching conversations from Atlas...")
+    conversations = await db["conversations"].find({}).to_list(length=100) # Sample 100
+    
+    print("📂 Fetching messages from Atlas...")
+    messages = await db["messages"].find({}).to_list(length=None)
         
     sample_size = 30
     subset = conversations[:sample_size]
     results = []
     
     for i, conv in enumerate(subset):
-        conv_id = conv.get("conversationId")
-        print(f"[{i+1}/{sample_size}] Processing ID: {conv_id}...")
+        conv_id = str(conv.get("_id"))
+        # In original JSON it was 'conversationId', in MongoDB it's often the _id or a field.
+        # Let's check both.
+        cid_for_query = conv.get("conversationId") or conv_id
         
-        transcript = await get_transcript(conv_id, messages)
-        analysis = await analyze_transcript(transcript, conv_id)
+        print(f"[{i+1}/{sample_size}] Processing ID: {cid_for_query}...")
+        
+        transcript = await get_transcript(cid_for_query, messages)
+        if not transcript:
+            print(f"   ⚠️ No transcript found for {cid_for_query}")
+            continue
+
+        analysis = await analyze_transcript(transcript, cid_for_query)
         
         result_entry = {
-            "conversation_id": conv_id,
+            "conversation_id": cid_for_query,
             "widget_id": conv.get("widgetId", "unknown"),
-            "audit": analysis
+            "audit": analysis,
+            "analyzed_at": datetime.utcnow()
         }
         results.append(result_entry)
         
         # Rate limit protection
         await asyncio.sleep(2) 
         
-    # Save Results
-    with open("batch_audit_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+    # Save Results to MongoDB
+    if results:
+        print(f"📤 Uploading {len(results)} results to MongoDB collection '{RESULTS_COLLECTION}'...")
+        coll = db[RESULTS_COLLECTION]
+        await coll.drop() # Clear old results like the JSON script did
+        await coll.insert_many(results)
+        print(f"\n✅ Analysis complete! Results saved to MongoDB cluster.")
+    else:
+        print("\n⚠️ No results to save.")
         
-    print(f"\n✅ Analysis complete! Results saved to batch_audit_results.json")
+    client.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

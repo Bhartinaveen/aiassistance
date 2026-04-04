@@ -18,32 +18,31 @@ export default function ModelWeaknessRadar({ data }: { data: any[] }) {
   const avgScore = data.reduce((sum, d) => sum + (d.evaluation?.User_Satisfaction_Score || 0), 0) / total;
   metrics.satisfaction.score = parseFloat(avgScore.toFixed(1));
 
-  // Accuracy: inverse of hallucination rate (fewer hallucinations = higher score)
-  const hallucinationCount = data.filter(d => d.evaluation?.Hallucination_Detected === true).length;
-  metrics.hallucination.score = parseFloat((10 - (hallucinationCount / total) * 10).toFixed(1));
+  // Accuracy: Use AI score if available, otherwise fallback to inverse hallucination
+  const avgAccuracy = data.some(d => d.evaluation?.Accuracy_Score)
+    ? data.reduce((sum, d) => sum + (d.evaluation?.Accuracy_Score || 0), 0) / total
+    : (10 - (data.filter(d => d.evaluation?.Hallucination_Detected === true).length / total) * 10);
+  metrics.hallucination.score = parseFloat(avgAccuracy.toFixed(1));
 
-  // Retention: inverse of dropoff rate
-  const dropoffCount = data.filter(d => d.dropoff === true).length;
-  metrics.retention.score = parseFloat((10 - (dropoffCount / total) * 10).toFixed(1));
+  // Retention: Use AI score if available, otherwise fallback to inverse dropoff
+  const avgRetention = data.some(d => d.evaluation?.Retention_Score)
+    ? data.reduce((sum, d) => sum + (d.evaluation?.Retention_Score || 0), 0) / total
+    : (10 - (data.filter(d => d.dropoff === true).length / total) * 10);
+  metrics.retention.score = parseFloat(avgRetention.toFixed(1));
 
-  // Compliance: based on friction and frustration (no friction = higher score)
-  const frictionCount = data.filter(d => d.evaluation?.Checkout_Friction_Detected === true).length;
-  const frustrationCount = data.filter(d =>
-    d.evaluation?.Sentiment_Shift?.toLowerCase().includes('frustrat') ||
-    d.evaluation?.Sentiment_Shift?.toLowerCase().includes('angry') ||
-    d.evaluation?.Sentiment_Shift?.toLowerCase().includes('confused')
-  ).length;
-  metrics.compliance.score = parseFloat((10 - ((frictionCount + frustrationCount) / total) * 5).toFixed(1));
+  // Compliance: Use AI score if available, otherwise fallback to friction/frustration
+  const avgCompliance = data.some(d => d.evaluation?.Compliance_Score)
+    ? data.reduce((sum, d) => sum + (d.evaluation?.Compliance_Score || 0), 0) / total
+    : (10 - ((data.filter(d => d.evaluation?.Checkout_Friction_Detected === true).length + 
+              data.filter(d => d.evaluation?.Sentiment_Shift?.toLowerCase().includes('frustrat')).length) / total) * 5);
+  metrics.compliance.score = parseFloat(avgCompliance.toFixed(1));
 
-  // Engagement: based on loop detection and positive sentiment
-  const loopCount = data.filter(d => d.loop_detected === true).length;
-  const positiveCount = data.filter(d =>
-    d.evaluation?.Sentiment_Shift?.toLowerCase().includes('positive') ||
-    d.evaluation?.Sentiment_Shift?.toLowerCase().includes('satisfied')
-  ).length;
-  metrics.engagement.score = parseFloat(
-    Math.max(0, Math.min(10, 10 - (loopCount / total) * 10 + (positiveCount / total) * 3)).toFixed(1)
-  );
+  // Engagement: Use AI score if available, otherwise fallback to positive sentiment
+  const avgEngagement = data.some(d => d.evaluation?.Engagement_Score)
+    ? data.reduce((sum, d) => sum + (d.evaluation?.Engagement_Score || 0), 0) / total
+    : Math.max(0, Math.min(10, 10 - (data.filter(d => d.loop_detected === true).length / total) * 10 + 
+                                (data.filter(d => d.evaluation?.Sentiment_Shift?.toLowerCase().includes('positive')).length / total) * 3));
+  metrics.engagement.score = parseFloat(avgEngagement.toFixed(1));
 
   const chartData = Object.values(metrics).map(m => ({
     subject: m.label,
@@ -75,7 +74,7 @@ export default function ModelWeaknessRadar({ data }: { data: any[] }) {
               fontSize: '12px',
             }}
             itemStyle={{ color: '#fff' }}
-            formatter={(value: number) => [`${value}/10`, 'Score']}
+            formatter={(value: any) => [`${value}/10`, 'Score']}
           />
         </RadarChart>
       </ResponsiveContainer>

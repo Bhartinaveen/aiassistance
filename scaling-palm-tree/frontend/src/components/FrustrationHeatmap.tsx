@@ -43,10 +43,39 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
     }];
   }, [data]);
 
-  const COLORS = ['#ef4444', '#f87171', '#fb923c', '#facc15', '#a78bfa', '#818cf8', '#34d399', '#2dd4bf', '#38bdf8', '#6366f1'];
+  const getColorByKeyword = (word: string) => {
+    const w = word.toLowerCase();
+    
+    // CRITICAL: Failures, Errors, Safety, Hallucination
+    if (w.includes('fail') || w.includes('error') || w.includes('safety') || 
+        w.includes('hallucinat') || w.includes('incorrect') || w.includes('wrong')) {
+      return '#ef4444'; // Red-500
+    }
+    
+    // FRICTION: Support, Logic, Interaction, Frustration, Delay
+    if (w.includes('support') || w.includes('logic') || w.includes('interaction') || 
+        w.includes('frustrat') || w.includes('delay') || w.includes('wait') || w.includes('loop')) {
+      return '#f59e0b'; // Amber-500
+    }
+    
+    // MODEL: Price, Context, Generic, Management, Explaining
+    if (w.includes('price') || w.includes('context') || w.includes('generic') || 
+        w.includes('management') || w.includes('knowledge')) {
+      return '#6366f1'; // Indigo-500
+    }
+    
+    // COMPLIANCE: Policy, Disclaimer, Verifying, Health
+    if (w.includes('compliance') || w.includes('disclaimer') || w.includes('verify') || 
+        w.includes('health') || w.includes('limit') || w.includes('policy')) {
+      return '#14b8a6'; // Teal-500
+    }
+    
+    return '#8b5cf6'; // Violet-500 (Default)
+  };
 
   const CustomContent = (props: any) => {
     const { x, y, width, height, index, name } = props;
+    const color = getColorByKeyword(name);
 
     return (
       <g>
@@ -56,23 +85,28 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
           width={width}
           height={height}
           style={{
-            fill: COLORS[index % COLORS.length],
-            stroke: 'rgba(0,0,0,0.2)',
-            strokeWidth: 2,
-            fillOpacity: 0.8,
+            fill: color,
+            stroke: 'rgba(0,0,0,0.4)',
+            strokeWidth: 1.5,
+            fillOpacity: 0.85,
           }}
           className="hover:fill-opacity-100 transition-all cursor-crosshair"
         />
-        {width > 40 && height > 20 && (
+        {width > 45 && height > 25 && (
           <text
             x={x + width / 2}
             y={y + height / 2}
             textAnchor="middle"
             dominantBaseline="middle"
             fill="#fff"
-            fontSize={Math.min(width / 6, 14)}
-            fontWeight="bold"
-            style={{ pointerEvents: 'none' }}
+            fontSize={Math.min(width / 7, 13)}
+            fontWeight="900"
+            style={{ 
+              pointerEvents: 'none',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}
           >
             {name}
           </text>
@@ -83,19 +117,37 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
 
   return (
     <div className="h-72 w-full p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white/80 font-medium text-sm tracking-wide">Issue Density Heatmap</h3>
-        <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Top 15 Micro-Issues</span>
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <h3 className="text-white/80 font-medium text-sm tracking-wide uppercase">Issue Friction Matrix</h3>
+          <p className="text-[9px] text-white/20 uppercase tracking-tighter mt-0.5 font-bold">Size = Frequency of Failure</p>
+        </div>
+        <div className="flex items-center gap-3">
+           <div className="flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-lg border border-white/5">
+              {[
+                { c: '#ef4444', l: 'Critical' },
+                { c: '#f59e0b', l: 'Friction' },
+                { c: '#6366f1', l: 'Model' },
+                { c: '#14b8a6', l: 'Policy' }
+              ].map(item => (
+                <div key={item.l} className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.c }} />
+                  <span className="text-[7px] text-white/40 font-black uppercase tracking-tighter">{item.l}</span>
+                </div>
+              ))}
+           </div>
+           <span className="text-[10px] text-white/30 truncate pl-2 uppercase tracking-widest font-black">Neural Lab</span>
+        </div>
       </div>
       
-      <div className="flex-1 min-h-[180px]">
+      <div className="flex-1 min-h-[180px] mt-2">
         {frustrationData.length > 0 && frustrationData[0].children.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <Treemap
               data={frustrationData}
               dataKey="size"
               aspectRatio={4 / 3}
-              stroke="#fff"
+              stroke="#000"
               content={<CustomContent />}
             >
               <Tooltip
@@ -105,14 +157,15 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
                   borderRadius: '12px',
                   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
                 }}
-                itemStyle={{ color: '#fff', fontSize: '12px' }}
-                formatter={(value: number) => [`${value} Occurrences`, 'Frequency']}
+                itemStyle={{ color: '#fff', fontSize: '11px' }}
+                labelStyle={{ display: 'none' }}
+                formatter={(value: any, name: any) => [`${value} Occurrences`, `Issue: ${name}`]}
               />
             </Treemap>
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-white/20 text-sm italic">
-            No frustration patterns identified yet...
+            No friction patterns identified yet...
           </div>
         )}
       </div>
@@ -133,16 +186,18 @@ function extractKeywords(text: string): string[] {
     'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
     'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'and',
     'but', 'or', 'if', 'while', 'because', 'about', 'which', 'that',
-    'this', 'these', 'those', 'its', 'it', 'also', 'any', 'without',
+    'this', 'these', 'those', 'its', 'it', 'all', 'also', 'any', 'without',
     'agent', 'user', 'ai', 'e-commerce', 'product', 'must', 'regarding',
     'provided', 'marketing', 'data', 'session', 'users', 'potentially',
-    'unverified', 'successfully'
+    'unverified', 'successfully', 'medical', 'claims', 'integration',
+    'order', 'health', 'specific', 'failed', 'makes', 'makes', 'lack',
+    'loss', 'tracking', 'system', 'herbal', 'weight'
   ]);
 
   return text
     .replace(/[^a-zA-Z\s-]/g, ' ')
     .split(/\s+/)
     .map(w => w.toLowerCase().trim())
-    .filter(w => w.length > 3 && !stopWords.has(w))
+    .filter(w => w.length > 4 && !stopWords.has(w))
     .filter((w, i, arr) => arr.indexOf(w) === i); // dedupe per sentence
 }

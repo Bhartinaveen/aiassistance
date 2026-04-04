@@ -45,10 +45,7 @@ async def main():
         print(f"   Summary: {ev.get('Summary_Insights')}")
         print()
 
-    # Save full results
-    with open("top_20_30_results.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    print("💾 Full results saved to top_20_30_results.json")
+    print("✅ All analysis reports have been saved to MongoDB Atlas by the backend server.")
 
 if __name__ == "__main__":
     asyncio.run(main())

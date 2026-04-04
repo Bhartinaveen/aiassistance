@@ -39,6 +39,10 @@ Return a JSON object with these exact keys:
 "Bottleneck": (Specific failure point)
 "Root_Cause": (Error source)
 "Summary_Insights": (1-sentence summary)
+"Accuracy_Score": (integer 1-10) - Precision and truthfulness of agent's information.
+"Retention_Score": (integer 1-10) - Ability to keep the user engaged and prevent drop-offs.
+"Compliance_Score": (integer 1-10) - Adherence to guidelines and lack of friction.
+"Engagement_Score": (integer 1-10) - Quality of conversation flow and helpfulness.
 "Primary_Inquiry_Type": (Inquiry type)
 "Product_Mentioned": (Product name or "None")
 
@@ -126,5 +130,9 @@ def _generate_mock_data(transcript: str, reason: str) -> dict:
         "Root_Cause": root_causes[hashed % len(root_causes)],
         "Summary_Insights": f"Simulated evaluation: {reason}",
         "Primary_Inquiry_Type": intents[hashed % len(intents)],
-        "Product_Mentioned": products[hashed % len(products)]
+        "Product_Mentioned": products[hashed % len(products)],
+        "Accuracy_Score": (hashed % 5) + 5,      # 5-10
+        "Retention_Score": (hashed % 7) + 3,     # 3-10
+        "Compliance_Score": (hashed % 6) + 4,    # 4-10
+        "Engagement_Score": (hashed % 5) + 6,    # 6-10
     }
