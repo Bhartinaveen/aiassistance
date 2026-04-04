@@ -6,4 +6,4 @@ langchain-google-genai
 pandas
 python-dotenv
 pydantic
-httpx
+gunicorn
