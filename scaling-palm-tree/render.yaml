@@ -1,0 +1,22 @@
+services:
+  # Backend (FastAPI)
+  - type: web
+    name: ai-behavior-engine
+    runtime: python
+    rootDir: backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGO_URI
+        sync: false # You will need to set this in Render UI
+      - key: GEMINI_API_KEY
+        sync: false # You will need to set this in Render UI
+
+  # Frontend (Next.js - can also be done on Vercel, but here is for unified Render)
+  - type: web
+    name: ai-behavior-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
