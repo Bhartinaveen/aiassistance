@@ -17,7 +17,7 @@ export default function Home() {
   const [selectedBrand, setSelectedBrand] = useState<string>("All Brands");
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/analysis/run")
+    fetch("https://aiassistance-kfib.onrender.com/api/analysis/run")
       .then(res => res.json())
       .then(resData => {
         if (resData.status === "success") {
