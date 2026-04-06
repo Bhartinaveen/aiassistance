@@ -42,8 +42,8 @@ async def initialize_state():
     print(f"🚀 AUTO-SCRAP: Triggering background AI analysis on startup...\n")
     asyncio.create_task(run_analysis())
     
-    # 4. Show target summary (top 20) for review
-    start, end = 0, 20
+    # 4. Show target summary (top 30) for review
+    start, end = 0, 30
     total = len(_conversations_cache)
     actual_end = min(end, total)
     batch = _conversations_cache[start:actual_end]
@@ -60,7 +60,7 @@ async def initialize_state():
             created = str(conv.get('createdAt', 'unknown'))[:19]
             print(f"{start+i+1:<5} {conv_id:<30} {widget_id[:26]:<28} {created}")
         
-        # Count messages per conversation
+        # Count messages per conversation 
         msg_counts = {}
         for msg in _messages_cache:
             cid = msg.get('conversationId', '')
@@ -73,7 +73,7 @@ async def initialize_state():
         print(f"{'='*70}")
         print(f"\n⚡ SYSTEM READY — Background analysis is active. Dashboard will update live.\n")
 
-# Allow CORS for Next.js frontend
+# Allow CORS for Next.js frontend 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

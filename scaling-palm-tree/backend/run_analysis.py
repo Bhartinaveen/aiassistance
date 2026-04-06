@@ -4,7 +4,7 @@ import json
 import asyncio
 
 async def main():
-    print("🚀 Triggering LLM analysis on conversations #20-30...")
+    print("🚀 Triggering LLM analysis on conversations #1 to 30...")
     async with httpx.AsyncClient(timeout=300.0) as client:
         resp = await client.get("http://127.0.0.1:8000/api/analysis/run")
         data = resp.json()

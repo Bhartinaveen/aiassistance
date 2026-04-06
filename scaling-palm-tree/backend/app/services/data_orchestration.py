@@ -80,7 +80,7 @@ async def ensure_data_loaded():
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-async def fetch_all_conversations(start: int = 0, end: int = 20) -> list:
+async def fetch_all_conversations(start: int = 0, end: int = 30) -> list:
     """
     Returns up to `end - start` conversations from the in-memory cache.
     """

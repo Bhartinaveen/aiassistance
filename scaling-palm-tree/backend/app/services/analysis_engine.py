@@ -57,6 +57,7 @@ Return ONLY the JSON block. Do not include markdown code blocks.'''
     }
     
     max_retries = 4
+    last_error = "Unknown"
     for attempt in range(max_retries):
         try:
             import httpx
@@ -75,13 +76,13 @@ Return ONLY the JSON block. Do not include markdown code blocks.'''
             return json.loads(content)
             
         except Exception as e:
-            error_msg = str(e)
-            if "404" in error_msg:
+            last_error = str(e)
+            if "404" in last_error:
                 print(f"Analysis skipping retries for 404 unsupported model: {e}. Falling back immediately.")
                 break
             
             if attempt < max_retries - 1:
-                if "429" in error_msg or "quota" in error_msg.lower():
+                if "429" in last_error or "quota" in last_error.lower():
                     await asyncio.sleep(25 + (attempt * 10)) 
                 else:
                     await asyncio.sleep(2 ** attempt + 3) 
@@ -90,7 +91,7 @@ Return ONLY the JSON block. Do not include markdown code blocks.'''
             print(f"Analysis failed after {max_retries} attempts: {e}. Falling back to simulated data.")
             break
             
-    return _generate_mock_data(transcript, f"Fallback Error: {str(e)[:50]}")
+    return _generate_mock_data(transcript, f"Fallback Error: {last_error[:50]}")
 
 def _generate_mock_data(transcript: str, reason: str) -> dict:
     # Simulated Data Generator for fallback and robustness
