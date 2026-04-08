@@ -1,6 +1,6 @@
 "use client";
 
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
 export default function ModelWeaknessRadar({ data }: { data: any[] }) {
   // Aggregate performance by multiple dimensions from real LLM data
@@ -47,37 +47,56 @@ export default function ModelWeaknessRadar({ data }: { data: any[] }) {
   const chartData = Object.values(metrics).map(m => ({
     subject: m.label,
     score: Math.max(0, Math.min(10, m.score)),
-    fullMark: 10,
   }));
 
+  const COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#e879f9'];
+
   return (
-    <div className="h-72 w-full p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl">
-      <h3 className="text-white/80 font-medium mb-2 text-sm tracking-wide">Model Performance Radar</h3>
-      <ResponsiveContainer width="100%" height="85%">
-        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-          <PolarGrid stroke="#ffffff20" />
-          <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff90', fontSize: 11 }} />
-          <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} stroke="#ffffff20" />
-          <Radar
-            name="Score"
-            dataKey="score"
-            stroke="#818cf8"
-            fill="#818cf8"
-            fillOpacity={0.4}
-            strokeWidth={2}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#171717',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              fontSize: '12px',
-            }}
-            itemStyle={{ color: '#fff' }}
-            formatter={(value: any) => [`${value}/10`, 'Score']}
-          />
-        </RadarChart>
-      </ResponsiveContainer>
+    <div className="h-72 w-full p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl flex flex-col">
+      <div className="mb-4">
+        <h3 className="text-white/80 font-medium text-sm tracking-wide uppercase">Agent Capability Profile</h3>
+        <p className="text-[10px] text-white/40 mt-0.5 max-w-[400px]">Scores the conversational agent's core capabilities out of 10 to highlight strengths and areas for improvement.</p>
+      </div>
+      
+      <div className="flex-1 min-h-0 relative">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+            {/* Background dashed lines for score visualization */}
+            <YAxis 
+              domain={[0, 10]} 
+              tickCount={6} 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#ffffff40', fontSize: 10, fontWeight: 'bold' }} 
+            />
+            <XAxis 
+              dataKey="subject" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#ffffff80', fontSize: 11, fontWeight: '600' }} 
+              dy={10}
+            />
+            <Tooltip
+              cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+              contentStyle={{
+                backgroundColor: '#171717',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 'bold'
+              }}
+              itemStyle={{ color: '#fff' }}
+              formatter={(value: any, name: any, props: any) => [`${value} / 10`, props.payload.subject]}
+              labelStyle={{ display: 'none' }}
+            />
+            <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={40}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -35,6 +35,8 @@ Return a JSON object with these exact keys:
 "Checkout_Friction_Detected": (boolean)
 "User_Frustration_Point": (If friction detected, specific issue like "Payment Timeout" or "Coupon Error", else "None")
 "Agent_Improvement_Rule": (Specific instruction to fix the issue, e.g., "AI should offer alternative payment methods", else "None")
+"Agent_Message_Problem": (Specific mistake or shortcoming in the agent's message, else "None")
+"User_Message_Problem": (The underlying issue or frustration expressed by the user, else "None")
 "Sentiment_Shift": (Emotional trend)
 "Bottleneck": (Specific failure point)
 "Root_Cause": (Error source)
@@ -126,6 +128,8 @@ def _generate_mock_data(transcript: str, reason: str) -> dict:
         "Checkout_Friction_Detected": bool(hashed % 3 == 0),
         "User_Frustration_Point": scenario["friction"] if bool(hashed % 3 == 0) else "None",
         "Agent_Improvement_Rule": scenario["rule"] if bool(hashed % 3 == 0) else "None",
+        "Agent_Message_Problem": "Failed to offer relevant alternative" if bool(hashed % 3 == 0) else "None",
+        "User_Message_Problem": "Stuck at payment screen" if bool(hashed % 3 == 0) else "None",
         "Sentiment_Shift": "Neutral to Positive" if hashed % 3 == 0 else "Neutral to Frustrated",
         "Bottleneck": intents[hashed % len(intents)] + " queries",
         "Root_Cause": root_causes[hashed % len(root_causes)],

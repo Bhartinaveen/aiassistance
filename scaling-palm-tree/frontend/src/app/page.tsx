@@ -4,11 +4,10 @@ import { Activity, AlertTriangle, Zap, ShoppingBag, TrendingUp, Cpu, Info } from
 
 import InquiryIntentChart from '@/components/InquiryIntentChart';
 import ProductInterestCloud from '@/components/ProductInterestCloud';
-import CheckoutFrictionAlerts from '@/components/CheckoutFrictionAlerts';
 import FrustrationHeatmap from '@/components/FrustrationHeatmap';
-import HallucinationTracker from '@/components/HallucinationTracker';
 import ModelWeaknessRadar from '@/components/ModelWeaknessRadar';
 import ChatInterface from '@/components/ChatInterface';
+import ProblemConversationsList from '@/components/ProblemConversationsList';
 
 export default function Home() {
   const [allData, setAllData] = useState<any[]>([]);
@@ -67,16 +66,17 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl glass border border-white/5">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Brand Matrix</span>
+              <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Active Brand</span>
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer border-none p-0 focus:ring-0"
+                className="bg-transparent text-sm font-bold text-primary outline-none cursor-pointer border-none p-0 focus:ring-0"
               >
                 <option className="bg-[#020203]" value="All Brands">All Brands</option>
-                {brands.map(b => (
-                  <option className="bg-[#020203]" key={b as string} value={b as string}>{(b as string).slice(-8).toUpperCase()}</option>
-                ))}
+                {brands.map(b => {
+                  const brandName = b === "680a0a8b70a26f7a0e24eedd" ? "Blue Nectar" : (b as string).slice(-8).toUpperCase();
+                  return <option className="bg-[#020203]" key={b as string} value={b as string}>{brandName}</option>
+                })}
               </select>
             </div>
 
@@ -115,10 +115,10 @@ export default function Home() {
                   : "0";
 
                 return [
-                  { label: "Avg Satisfaction", value: `${avgScore}/10`, icon: Zap, color: "text-yellow-400" },
-                  { label: "Hallucination Rate", value: `${hallucinationRate}%`, icon: AlertTriangle, color: "text-red-400" },
-                  { label: "Dropout Rate", value: `${dropoffRate}%`, icon: Activity, color: "text-orange-400" },
-                  { label: "Conversations", value: `${data.length}`, icon: Info, color: "text-blue-400" },
+                  { label: "Avg User Satisfaction", value: `${avgScore}/10`, icon: Zap, color: "text-yellow-400" },
+                  { label: "Agent Hallucination Rate", value: `${hallucinationRate}%`, icon: AlertTriangle, color: "text-red-400" },
+                  { label: "User Dropout Rate", value: `${dropoffRate}%`, icon: Activity, color: "text-orange-400" },
+                  { label: "Total Conversations", value: `${data.length}`, icon: Info, color: "text-blue-400" },
                 ].map((stat, i) => (
                   <div key={i} className="p-4 rounded-3xl glass-card flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
                     <div>
@@ -132,63 +132,54 @@ export default function Home() {
             </div>
 
             {/* Main Visualizations Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Left Column: Intent & Weakness */}
-              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.2s' }}>
-                  <div className="p-6 pb-0">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                      <TrendingUp size={14} className="text-primary" /> Behavioral Intent Map
-                    </h3>
-                  </div>
-                  <div className="h-[400px]">
-                    <InquiryIntentChart data={data} />
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.2s' }}>
+                <div className="p-6 pb-0">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
+                    <TrendingUp size={14} className="text-primary" /> Behavioral Intent Map
+                  </h3>
                 </div>
-                <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.3s' }}>
-                  <div className="p-6 pb-0">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                      <AlertTriangle size={14} className="text-red-400" /> Model Weakness Radar
-                    </h3>
-                  </div>
-                  <div className="h-[400px]">
-                    <ModelWeaknessRadar data={data} />
-                  </div>
+                <div className="h-[400px]">
+                  <InquiryIntentChart data={data} />
                 </div>
-
-                {/* Product Interest - Spanning 2 columns */}
-                <div className="md:col-span-2 glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.4s' }}>
-                  <div className="p-6 pb-0">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                      <ShoppingBag size={14} className="text-green-400" /> Product Interest Cloud
-                    </h3>
-                  </div>
-                  <div className="h-[400px]">
-                    <ProductInterestCloud data={data} />
-                  </div>
+              </div>
+              <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.3s' }}>
+                <div className="p-6 pb-0">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-red-400" /> Agent Capability Profile
+                  </h3>
+                </div>
+                <div className="h-[400px]">
+                  <ModelWeaknessRadar data={data} />
                 </div>
               </div>
 
-              {/* Right Column: Checkout Friction Feed */}
-              <div className="lg:col-span-4 h-[600px] max-h-[600px] animate-entry" style={{ animationDelay: '0.5s' }}>
-                <CheckoutFrictionAlerts data={data} />
+              {/* Product Interest - Spanning 2 columns */}
+              <div className="md:col-span-2 glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.4s' }}>
+                <div className="p-6 pb-0">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
+                    <ShoppingBag size={14} className="text-green-400" /> Product Interest Cloud
+                  </h3>
+                </div>
+                <div className="h-[400px]">
+                  <ProductInterestCloud data={data} />
+                </div>
               </div>
             </div>
 
             {/* Error Tracking Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-entry" style={{ animationDelay: '0.6s' }}>
+            <div className="grid grid-cols-1 gap-8 animate-entry" style={{ animationDelay: '0.6s' }}>
               <div className="glass-card rounded-[2.5rem] p-8 overflow-hidden">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
                   <Zap size={14} className="text-yellow-400" /> Frustration Heatmap
                 </h3>
                 <FrustrationHeatmap data={data} />
               </div>
-              <div className="glass-card rounded-[2.5rem] p-8 overflow-hidden">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
-                  < Zap size={14} className="text-primary" /> Hallucination Tracker
-                </h3>
-                <HallucinationTracker data={data} />
-              </div>
+            </div>
+
+            {/* Problematic Conversations Tracker */}
+            <div className="animate-entry" style={{ animationDelay: '0.7s' }}>
+              <ProblemConversationsList data={data} />
             </div>
 
             {/* Refined Compact Footer */}

@@ -80,7 +80,7 @@ async def ensure_data_loaded():
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-async def fetch_all_conversations(start: int = 0, end: int = 30) -> list:
+async def fetch_all_conversations(start: int = 0, end: int = 20) -> list:
     """
     Returns up to `end - start` conversations from the in-memory cache.
     """
@@ -158,3 +158,13 @@ async def get_conversation_transcript(conversation_id: str):
     print(f"   📝 Transcript built: {len(messages)} messages | "
           f"Dropoff: {is_dropoff} | Loop: {loop_detected}")
     return transcript, is_dropoff, loop_detected
+
+async def get_conversation_messages(conversation_id: str) -> list:
+    """
+    Returns the raw list of messages for a given conversation.
+    Useful for the frontend to display the chat log.
+    """
+    await ensure_data_loaded()
+    messages = [m for m in _messages_cache if m.get("conversationId") == conversation_id]
+    messages.sort(key=lambda x: x.get("timestamp", ""))
+    return messages

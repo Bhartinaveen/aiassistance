@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
+import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8', '#fb923c', '#e879f9', '#4ade80', '#2dd4bf'];
 
@@ -21,46 +21,60 @@ export default function ProductInterestCloud({ data }: { data: any[] }) {
     });
   });
 
-  const chartData = Object.entries(productCount)
+  const rawChartData = Object.entries(productCount)
     .map(([name, count]) => ({
       name: name.length > 25 ? name.slice(0, 22) + "…" : name,
       fullName: name,
-      count,
+      value: count, // RadialBar uses 'value'
     }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8); // Top 8 products for clarity
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5); // Top 5 products for clean concentric rings
+
+  // Calculate percentages and add fill colors for RadialBar
+  const totalValue = rawChartData.reduce((sum, item) => sum + item.value, 0);
+  const radialData = rawChartData.map((item, idx) => ({
+    ...item,
+    fill: COLORS[idx % COLORS.length],
+    percentage: Math.round((item.value / (totalValue || 1)) * 100)
+  })).reverse(); // Reverse so largest concentric ring is on the outside
+
+  // Custom payload for the legend to force it to render highest percentage first 
+  // (re-reversing so they render top-down in descending order)
+  const legendPayload = [...radialData].reverse().map(item => ({
+    id: item.fullName,
+    type: 'square' as const,
+    value: item.name,
+    color: item.fill,
+    payload: item
+  }));
 
   return (
     <div className="w-full h-full flex flex-col p-6 overflow-hidden">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white/70 text-sm font-medium">Trending Product Interests</h3>
-        <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Top 8 Products</span>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h3 className="text-white/80 text-sm font-medium uppercase tracking-wide">Most Popular Products</h3>
+          <p className="text-[10px] text-white/40 mt-1 max-w-[400px]">This circular graph shows exactly which items users want. The percentages track each product's total share of interest.</p>
+        </div>
       </div>
       
-      <div className="flex-1 min-h-[300px]">
-        {chartData.length > 0 ? (
+      <div className="flex-1 min-h-[300px] mt-4">
+        {radialData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              layout="vertical"
-              margin={{ top: 5, right: 40, left: 0, bottom: 5 }}
+            <RadialBarChart 
+              cx="50%" 
+              cy="50%" 
+              innerRadius="20%" 
+              outerRadius="100%" 
+              barSize={18} 
+              data={radialData}
+              startAngle={90}
+              endAngle={-270}
             >
-              <defs>
-                {chartData.map((_, index) => (
-                  <linearGradient key={`gradient-${index}`} id={`colorGradient-${index}`} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.8} />
-                    <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.2} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <XAxis type="number" hide />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={150}
-                tick={{ fill: '#ffffff90', fontSize: 11, fontWeight: 600 }}
-                axisLine={false}
-                tickLine={false}
+              <RadialBar
+                minPointSize={15}
+                background={{ fill: 'rgba(255,255,255,0.05)' }}
+                dataKey="value"
+                cornerRadius={10}
               />
               <Tooltip
                 contentStyle={{
@@ -69,33 +83,30 @@ export default function ProductInterestCloud({ data }: { data: any[] }) {
                   borderRadius: '12px',
                   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
                 }}
-                itemStyle={{ color: '#fff', fontSize: '12px' }}
-                cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: 'bold' }}
+                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
                 formatter={(value: any, name: any, props: any) => [
-                  `${value} Mentions`,
+                  `${value} Mentions (${props.payload.percentage}%)`,
                   props.payload.fullName
                 ]}
               />
-              <Bar 
-                dataKey="count" 
-                radius={[0, 10, 10, 0]} 
-                barSize={18}
-                animationDuration={1500}
-              >
-                {chartData.map((_, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={`url(#colorGradient-${index})`}
-                    className="hover:opacity-80 transition-opacity cursor-pointer"
-                  />
-                ))}
-                <LabelList 
-                  dataKey="count" 
-                  position="right" 
-                  style={{ fill: '#ffffff60', fontSize: 10, fontWeight: 700 }} 
-                />
-              </Bar>
-            </BarChart>
+              <Legend 
+                content={() => (
+                  <ul className="flex flex-col gap-2 m-0 p-0 pl-4">
+                    {legendPayload.map((entry, index) => (
+                      <li key={`item-${index}`} className="flex items-center text-[11px] font-semibold text-white/80">
+                        <span className="w-3 h-3 rounded-sm mr-2 shrink-0" style={{ backgroundColor: entry.color }}/>
+                        <span className="truncate max-w-[150px]">{entry.id}</span>
+                        <span className="text-white/40 ml-1">({entry.payload.percentage}%)</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                layout="vertical" 
+                verticalAlign="middle" 
+                align="right"
+              />
+            </RadialBarChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-white/20 text-sm italic">

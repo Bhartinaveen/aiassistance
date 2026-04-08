@@ -8,7 +8,7 @@ from pydantic import BaseModel
 # Load .env file
 load_dotenv()
 
-from app.services.data_orchestration import fetch_all_conversations, get_conversation_transcript
+from app.services.data_orchestration import fetch_all_conversations, get_conversation_transcript, get_conversation_messages
 from app.services.analysis_engine import analyze_transcript
 from app.services.chat_agent import process_chat_query
 from app.services.cache_manager import save_to_cache, get_cached_analysis, clear_cache
@@ -85,6 +85,11 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the AI QA & Analytics Engine API"}
+
+@app.get("/api/conversation/{conv_id}/messages")
+async def get_messages(conv_id: str):
+    messages = await get_conversation_messages(conv_id)
+    return {"status": "success", "messages": messages}
 
 @app.get("/api/analysis/run")
 async def run_analysis():
