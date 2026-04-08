@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { AlertCircle, AlertTriangle, ShieldAlert, Cpu, Search } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ShieldAlert, Cpu, Search, Copy } from 'lucide-react';
 import ConversationModal from './ConversationModal';
 
 export default function ProblemConversationsList({ data }: { data: any[] }) {
@@ -122,12 +122,59 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
                 >
                   <td className="py-4 pr-4">
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs font-mono font-bold text-white/80 group-hover:text-primary transition-colors">
-                        ...{item.conversation_id?.slice(-8)}
-                      </span>
-                      <span className="text-[10px] text-white/30 uppercase font-black flex items-center gap-1">
-                        <Cpu size={10} /> {brand}
-                      </span>
+                      <div className="flex items-center gap-2 group/id">
+                        <span 
+                          className="text-[11px] font-mono font-bold text-white/80 group-hover:text-primary group-hover/id:text-primary transition-colors max-w-[150px] block truncate" 
+                          title={`Conversation ID: ${item.conversation_id}`}
+                        >
+                          {item.conversation_id}
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(item.conversation_id);
+                            const icon = e.currentTarget.querySelector('svg');
+                            if(icon) {
+                              icon.style.color = '#34d399';
+                              setTimeout(() => icon.style.color = '', 1500);
+                            }
+                          }}
+                          className="opacity-0 group-hover/id:opacity-100 transition-opacity p-1 text-white/40 hover:text-white rounded hover:bg-white/10"
+                          title="Copy Conversation ID"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-white/30 uppercase font-black flex items-center gap-1">
+                          <Cpu size={10} /> {brand}
+                        </span>
+                        {item.widget_id && (
+                          <div className="flex items-center gap-2 group/wid mt-0.5">
+                            <span 
+                              className="text-[8px] font-mono text-white/20 max-w-[150px] block truncate group-hover/wid:text-white/60 transition-colors"
+                              title={`Widget ID: ${item.widget_id}`}
+                            >
+                              WID: {item.widget_id}
+                            </span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(item.widget_id);
+                                const icon = e.currentTarget.querySelector('svg');
+                                if(icon) {
+                                  icon.style.color = '#34d399';
+                                  setTimeout(() => icon.style.color = '', 1500);
+                                }
+                              }}
+                              className="opacity-0 group-hover/wid:opacity-100 transition-opacity p-0.5 text-white/40 hover:text-white rounded hover:bg-white/10"
+                              title="Copy Widget ID"
+                            >
+                              <Copy size={10} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="py-4 pr-4 align-top">

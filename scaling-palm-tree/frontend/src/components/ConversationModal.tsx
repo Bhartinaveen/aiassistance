@@ -51,6 +51,11 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
                    <p className="text-xs text-white/80 font-medium truncate">
                      {report?.widget_id === "680a0a8b70a26f7a0e24eedd" ? "Blue Nectar" : (report?.widget_id || "Unknown")}
                    </p>
+                   {report?.widget_id && report.widget_id !== "Unknown" && (
+                     <p className="text-[9px] font-mono text-white/30 truncate mt-0.5" title={report.widget_id}>
+                       WID: {report.widget_id}
+                     </p>
+                   )}
                 </div>
                 <div>
                    <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Category</p>
