@@ -22,7 +22,7 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
           // Capitalize and truncate if too long
           let p = source.trim();
           p = p.charAt(0).toUpperCase() + p.slice(1);
-          if (p.length > 40) p = p.substring(0, 40) + "...";
+          if (p.length > 28) p = p.substring(0, 28) + "...";
           
           phraseFreq[p] = (phraseFreq[p] || 0) + 1;
         }
@@ -81,21 +81,21 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
 
   return (
     <div className="h-80 w-full p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
         <div>
           <h3 className="text-white/80 font-medium text-sm tracking-wide uppercase">Top Friction Drivers</h3>
           <p className="text-[10px] text-white/40 mt-0.5 max-w-[400px]">The most common bottlenecks and agent mistakes causing user frustration.</p>
         </div>
-        <div className="flex items-center gap-3">
-           <div className="flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-lg border border-white/5">
+        <div className="flex items-center">
+           <div className="flex flex-wrap items-center gap-2 bg-black/20 px-2 py-1.5 rounded-lg border border-white/5">
               {[
                 { c: '#ef4444', l: 'Critical Error' },
                 { c: '#f59e0b', l: 'Friction / Logic' },
                 { c: '#6366f1', l: 'Missing Capability' }
               ].map(item => (
-                <div key={item.l} className="flex items-center gap-2 px-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.c }} />
-                  <span className="text-[8px] text-white/50 font-black uppercase tracking-widest">{item.l}</span>
+                <div key={item.l} className="flex items-center gap-1.5 px-1">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.c }} />
+                  <span className="text-[8px] sm:text-[9px] text-white/50 font-black uppercase tracking-widest leading-none">{item.l}</span>
                 </div>
               ))}
            </div>
@@ -108,7 +108,7 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
             <BarChart
               data={frustrationData}
               layout="vertical"
-              margin={{ top: 0, right: 40, left: -20, bottom: 0 }}
+              margin={{ top: 0, right: 40, left: -10, bottom: 0 }}
             >
               <XAxis 
                 type="number" 
@@ -119,8 +119,8 @@ export default function FrustrationHeatmap({ data }: { data: any[] }) {
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false}
-                width={200}
-                tick={{ fill: '#ffffff80', fontSize: 11, fontWeight: 500 }}
+                width={130}
+                tick={{ fill: '#ffffff80', fontSize: 10, fontWeight: 500 }}
               />
               <Tooltip
                 cursor={{ fill: 'rgba(255,255,255,0.02)' }}

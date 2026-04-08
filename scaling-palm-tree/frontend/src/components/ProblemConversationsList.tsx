@@ -18,16 +18,16 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
   return (
     <>
       <div className="w-full glass-card rounded-[2.5rem] p-8 overflow-hidden animate-entry mt-8">
-      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-5">
         <div>
-          <h3 className="text-white font-black text-sm uppercase tracking-[0.3em] flex items-center gap-3">
-             <AlertTriangle size={18} className="text-primary" />
+          <h3 className="text-white font-black text-sm uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-3">
+             <AlertTriangle size={18} className="text-primary shrink-0" />
              All Conversations Tracker
           </h3>
           <p className="text-xs text-white/40 mt-2 font-medium">Click on any conversation row to view deep analysis and message logs.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
             <input 
               type="text" 
@@ -37,10 +37,10 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all w-48"
+              className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all w-full sm:w-48"
             />
           </div>
-          <div className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
+          <div className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider whitespace-nowrap self-start sm:self-auto">
             {filteredData.length} Conversations
           </div>
         </div>
