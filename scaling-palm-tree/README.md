@@ -118,9 +118,11 @@ The system uses the **Senior QA Lead AI Persona** to audit sessions. Each analys
 ## images of the  this project
 
 
-![alt text](screencapture-localhost-3000-2026-04-02-15_24_49.png)
+![alt text](screencapture-localhost-3000-2026-04-09-01_57_40.png)
 ## Ai agent chat with user
 ![alt text](image.png)
+## chat message
+![alt text](image-1.png)
 
 
 
