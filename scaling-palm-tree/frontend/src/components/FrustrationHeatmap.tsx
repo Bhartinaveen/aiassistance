@@ -1,152 +1,147 @@
 "use client";
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export default function FrustrationHeatmap({ data }: { data: any[] }) {
-  // Extract real phrases instead of broken single words for better readability
+  // Cluster frustration themes by keyword so similar AI phrases group together.
+  // Without this, phrases like "Inflexible return policy com..." and "Return Policy Rigidity"
+  // would be counted as two separate entries (each 1 occurrence = 17%) instead of
+  // clustering into one strong "return policy" bar with higher weight.
   const frustrationData = useMemo(() => {
-    const phraseFreq: Record<string, number> = {};
+    const keywordFreq: Record<string, number> = {};
 
     data.forEach(d => {
       const ev = d.evaluation || {};
-      // Use specific AI-generated root causes and bottlenecks
       const textSources = [
         ev.Root_Cause,
         ev.Bottleneck,
-        ev.User_Frustration_Point
+        ev.User_Frustration_Point,
+        ev.Agent_Message_Problem,
       ];
 
       textSources.forEach(source => {
-        if (source && typeof source === 'string' && source.length > 3 && !['none', 'n/a', 'none.', 'none identified'].includes(source.toLowerCase().trim())) {
-          // Capitalize and truncate if too long
-          let p = source.trim();
-          p = p.charAt(0).toUpperCase() + p.slice(1);
-          if (p.length > 28) p = p.substring(0, 28) + "...";
-          
-          phraseFreq[p] = (phraseFreq[p] || 0) + 1;
-        }
+        if (!source || typeof source !== 'string') return;
+        const lower = source.toLowerCase().trim();
+        if (['none', 'n/a', 'none.', 'none identified', 'no issue'].includes(lower)) return;
+
+        // Extract meaningful keywords from each phrase and count each keyword
+        // This clusters phrases like "Inflexible return policy" and "Return policy rigidity"
+        // into the same "return policy" bucket automatically
+        const keywords = extractKeywords(source);
+        keywords.forEach(kw => {
+          keywordFreq[kw] = (keywordFreq[kw] || 0) + 1;
+        });
       });
     });
 
-    // Format for Recharts BarChart
-    const sortedRaw = Object.entries(phraseFreq)
+    // Sort by frequency, take top 6 most common themes
+    const sortedRaw = Object.entries(keywordFreq)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6); // Top 6 phrases fit well vertically
+      .slice(0, 6);
 
     const totalCount = sortedRaw.reduce((sum, [, count]) => sum + count, 0);
 
     return sortedRaw.map(([text, count]) => ({
-      name: text,
+      // Capitalize the keyword for display
+      name: text.charAt(0).toUpperCase() + text.slice(1),
       size: count,
       percentage: Math.round((count / (totalCount || 1)) * 100)
     }));
   }, [data]);
 
-  const getColorByPhrase = (phrase: string) => {
+  const getTheme = (phrase: string): { color: string; bg: string; border: string; label: string } => {
     const p = phrase.toLowerCase();
-    
-    // CRITICAL (Red)
-    if (p.includes('fail') || p.includes('error') || p.includes('hallucinat') || p.includes('wrong') || p.includes('policy')) {
-      return '#ef4444'; 
+    if (p.includes('fail') || p.includes('error') || p.includes('hallucinat') || p.includes('wrong') || p.includes('policy') || p.includes('return')) {
+      return { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.25)', label: 'Critical' };
     }
-    // FRICTION (Yellow)
-    if (p.includes('support') || p.includes('logic') || p.includes('frustrat') || p.includes('delay') || p.includes('loop') || p.includes('rigid') || p.includes('timeout')) {
-      return '#f59e0b'; 
+    if (p.includes('support') || p.includes('frustrat') || p.includes('delay') || p.includes('loop') || p.includes('rigid') || p.includes('timeout') || p.includes('checkout')) {
+      return { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', label: 'Friction' };
     }
-    // CAPABILITY (Indigo)
-    if (p.includes('knowledge') || p.includes('context') || p.includes('generic') || p.includes('understanding') || p.includes('api')) {
-      return '#6366f1'; 
+    if (p.includes('knowledge') || p.includes('context') || p.includes('generic') || p.includes('understanding') || p.includes('api') || p.includes('inconsistent')) {
+      return { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.25)', label: 'Gap' };
     }
-    
-    return '#14b8a6'; // General (Teal)
+    return { color: '#14b8a6', bg: 'rgba(20,184,166,0.12)', border: 'rgba(20,184,166,0.25)', label: 'General' };
   };
 
-  const renderCustomBarLabel = ({ x, y, width, height, index }: any) => {
-    const percent = frustrationData[index]?.percentage || 0;
-    return (
-      <text 
-        x={x + width + 8} 
-        y={y + height / 2} 
-        fill="#ffffff60" 
-        textAnchor="start" 
-        dominantBaseline="central" 
-        fontSize={11} 
-        fontWeight="bold"
-      >
-        {percent}%
-      </text>
-    );
-  };
+  const maxCount = Math.max(...frustrationData.map(d => d.size), 1);
 
   return (
-    <div className="h-80 w-full p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl flex flex-col">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+    <div className="w-full p-5 bg-white/[0.03] border border-white/10 rounded-2xl backdrop-blur-md shadow-xl flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h3 className="text-white/80 font-medium text-sm tracking-wide uppercase">Top Friction Drivers</h3>
-          <p className="text-[10px] text-white/40 mt-0.5 max-w-[400px]">The most common bottlenecks and agent mistakes causing user frustration.</p>
+          <h3 className="text-white/90 font-black text-sm tracking-[0.2em] uppercase flex items-center gap-2">
+            <span className="w-1.5 h-4 rounded-full bg-amber-400 inline-block"></span>
+            Top Friction Drivers
+          </h3>
+          <p className="text-[10px] text-white/40 mt-1">Most common bottlenecks causing user frustration, ranked by frequency</p>
         </div>
-        <div className="flex items-center">
-           <div className="flex flex-wrap items-center gap-2 bg-black/20 px-2 py-1.5 rounded-lg border border-white/5">
-              {[
-                { c: '#ef4444', l: 'Critical Error' },
-                { c: '#f59e0b', l: 'Friction / Logic' },
-                { c: '#6366f1', l: 'Missing Capability' }
-              ].map(item => (
-                <div key={item.l} className="flex items-center gap-1.5 px-1">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.c }} />
-                  <span className="text-[8px] sm:text-[9px] text-white/50 font-black uppercase tracking-widest leading-none">{item.l}</span>
-                </div>
-              ))}
-           </div>
+        <div className="flex flex-wrap items-center gap-2 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
+          {[
+            { c: '#ef4444', l: 'Critical' },
+            { c: '#f59e0b', l: 'Friction' },
+            { c: '#6366f1', l: 'Gap' },
+            { c: '#14b8a6', l: 'General' },
+          ].map(item => (
+            <div key={item.l} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.c }} />
+              <span className="text-[9px] text-white/50 font-black uppercase tracking-widest">{item.l}</span>
+            </div>
+          ))}
         </div>
       </div>
-      
-      <div className="flex-1 min-h-[200px]">
-        {frustrationData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={frustrationData}
-              layout="vertical"
-              margin={{ top: 0, right: 40, left: -10, bottom: 0 }}
-            >
-              <XAxis 
-                type="number" 
-                hide 
-              />
-              <YAxis 
-                type="category" 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false}
-                width={130}
-                tick={{ fill: '#ffffff80', fontSize: 10, fontWeight: 500 }}
-              />
-              <Tooltip
-                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                contentStyle={{
-                  backgroundColor: '#171717',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-                }}
-                itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                labelStyle={{ display: 'none' }}
-                formatter={(value: any, name: any, props: any) => [`${value} Occurrences`, `${props.payload.name}`]}
-              />
-              <Bar dataKey="size" radius={[0, 4, 4, 0]} barSize={24} label={renderCustomBarLabel}>
-                {frustrationData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getColorByPhrase(entry.name)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex items-center justify-center h-full text-white/20 text-sm italic">
+
+      {/* Bars */}
+      {frustrationData.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          {frustrationData.map((entry, idx) => {
+            const theme = getTheme(entry.name);
+            const widthPct = Math.round((entry.size / maxCount) * 100);
+            return (
+              <div key={idx} className="flex items-center gap-3 group">
+                {/* Rank Badge */}
+                <span
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0"
+                  style={{ background: theme.bg, color: theme.color, border: `1px solid ${theme.border}` }}
+                >
+                  {idx + 1}
+                </span>
+
+                {/* Label + Bar */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-white/80 truncate">{entry.name}</span>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider"
+                        style={{ background: theme.bg, color: theme.color, border: `1px solid ${theme.border}` }}
+                      >
+                        {theme.label}
+                      </span>
+                      <span className="text-[11px] font-black text-white/60 tabular-nums">{entry.percentage}%</span>
+                    </div>
+                  </div>
+                  {/* Animated gradient bar */}
+                  <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${widthPct}%`,
+                        background: `linear-gradient(90deg, ${theme.color}99, ${theme.color})`,
+                        boxShadow: `0 0 8px ${theme.color}60`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-32 text-white/20 text-sm italic">
             No friction patterns identified yet...
           </div>
         )}
-      </div>
     </div>
   );
 }

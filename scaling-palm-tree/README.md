@@ -91,9 +91,9 @@ cd aiassistance/scaling-palm-tree
    ```
 
 ### **Step 3: Frontend Configuration**
-1. Open a new terminal in the frontend folder:
+1. Open a new terminal in the frontend folder: 
    ```bash
-   cd ../frontend
+   cd ../frontend 
    ```
 2. Install dependencies:
    ```bash

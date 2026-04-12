@@ -88,3 +88,12 @@ body {
   box-shadow: 0 0 40px -10px hsla(var(--primary), 0.3);
 }
 
+/* Hide ugly default browser number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

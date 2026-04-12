@@ -83,10 +83,12 @@ async def ensure_data_loaded():
 async def fetch_all_conversations(start: int = 0, end: int = 20) -> list:
     """
     Returns up to `end - start` conversations from the in-memory cache.
+    If `end` is -1, it dynamically pulls all loaded conversations automatically.
     """
     await ensure_data_loaded()
     total     = len(_conversations_cache)
-    actual_end = min(end, total)
+    # Automatically map actual bounds to the exact total cache size without blind hardcoding
+    actual_end = total if end == -1 else min(end, total)
     batch     = _conversations_cache[start:actual_end]
 
     print(f"\n{'='*60}")
@@ -127,7 +129,8 @@ async def get_conversation_transcript(conversation_id: str):
         text     = raw_text.split("End of stream")[0].strip()
 
         if text.startswith("{") and text.endswith("}"):
-            text = "[System Interaction/JSON Payload]"
+            # Skip complex JSON payloads that don't add context for behavioral analysis
+            continue
 
         msg_type = msg.get("messageType", "")
         meta     = msg.get("metadata", {})
@@ -135,12 +138,13 @@ async def get_conversation_transcript(conversation_id: str):
         if msg_type == "event":
             event_type   = meta.get("eventType", "unknown_event")
             product_name = meta.get("productName", "")
+            # Only keep high-value events; skip generic unknowns
             if event_type == "product_click":
-                transcript_lines.append(f"[Metadata: User clicked on {product_name}]")
+                transcript_lines.append(f"[User clicked on {product_name}]")
             elif event_type == "product_view":
-                transcript_lines.append(f"[Metadata: User viewed {product_name}]")
-            else:
-                transcript_lines.append(f"[Event: {event_type}]")
+                transcript_lines.append(f"[User viewed {product_name}]")
+            # Skip unknown_event or other low-signal metadata to save tokens
+            continue 
         else:
             if sender == "user":
                 user_msgs.append(text.lower())
@@ -148,7 +152,9 @@ async def get_conversation_transcript(conversation_id: str):
                         and user_msgs[-1] == user_msgs[-2] == user_msgs[-3]):
                     loop_detected = True
 
-            transcript_lines.append(f"{sender.capitalize()}: {text}")
+            # Normalize whitespace to save tokens
+            clean_text = " ".join(text.split())
+            transcript_lines.append(f"{sender.capitalize()}: {clean_text}")
 
     transcript = "\n".join(transcript_lines)
 

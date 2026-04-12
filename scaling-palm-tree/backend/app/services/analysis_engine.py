@@ -9,52 +9,58 @@ api_key = os.getenv("GEMINI_API_KEY", "")
 
 async def analyze_transcript(transcript: str) -> dict:
     """
-    Phase 2 & 3: Master Evaluation Engine.
-    Acts as a Senior QA Lead for E-commerce AI, discovering categories, 
-    detecting hallucinations, sentiment shifts, and identifying bottlenecks/root causes.
+    Phase 2 & 3: Master Evaluation Engine (Token Optimized).
+    Captures conversation context (Beginning) and outcomes (End) for token efficiency.
     """
     if not api_key:
         return _generate_mock_data(transcript, "Mock Mode: API Key missing")
         
-    system_prompt = "You are a Senior QA Lead for E-commerce AI. Your task is to analyze chat transcripts and turn raw logs into a Health Report."
+    # 📡 TOKEN OPTIMIZATION: Contextual Truncation (Start + End)
+    if len(transcript) > 3510:
+        clean_transcript = (
+            f"--- START ---\n{transcript[:1200]}\n"
+            f"\n... [Truncated for efficiency] ...\n\n"
+            f"--- END ---\n{transcript[-2000:]}"
+        )
+    else:
+        clean_transcript = transcript
+
+    system_prompt = "Senior E-commerce QA Lead. Analyze raw chat logs and return a Health Report."
     
     prompt = f'''{system_prompt}
-    
-Evaluate this e-commerce chat transcript between a User and an AI Agent.
-Analyze the story, categorical classification, and technical performance.
-BE AGGRESSIVE: If the agent mentions any specific price, feature, or policy that seems even slightly generic or unverified, flag it as a potential hallucination.
+Evaluate this chat. Flag generic/false info.
 
 Transcript:
-{transcript}
+{clean_transcript}
 
-Return a JSON object with these exact keys:
-"Category": (Luxury, Healthcare, Electronics, Fashion, or General)
-"User_Satisfaction_Score": (integer 1-10)
-"Hallucination_Detected": (boolean)
-"Hallucination_Reason": (Specific reason or "None")
-"Checkout_Friction_Detected": (boolean)
-"User_Frustration_Point": (If friction detected, specific issue like "Payment Timeout" or "Coupon Error", else "None")
-"Agent_Improvement_Rule": (Specific instruction to fix the issue, e.g., "AI should offer alternative payment methods", else "None")
-"Agent_Message_Problem": (Specific mistake or shortcoming in the agent's message, else "None")
-"User_Message_Problem": (The underlying issue or frustration expressed by the user, else "None")
-"Sentiment_Shift": (Emotional trend)
-"Bottleneck": (Specific failure point)
-"Root_Cause": (Error source)
-"Summary_Insights": (1-sentence summary)
-"Accuracy_Score": (integer 1-10) - Precision and truthfulness of agent's information.
-"Retention_Score": (integer 1-10) - Ability to keep the user engaged and prevent drop-offs.
-"Compliance_Score": (integer 1-10) - Adherence to guidelines and lack of friction.
-"Engagement_Score": (integer 1-10) - Quality of conversation flow and helpfulness.
-"Primary_Inquiry_Type": (Inquiry type)
-"Product_Mentioned": (Product name or "None")
+Return ONLY a JSON object with strictly these keys:
+"Category": (Luxury/Healthcare/Electronics/Fashion/General),
+"User_Satisfaction_Score": (1-10),
+"Hallucination_Detected": (bool),
+"Hallucination_Reason": (If hallucination detected, explain exactly what was false, else "None"),
+"Checkout_Friction_Detected": (bool),
+"User_Frustration_Point": (Specific issue the user faced or "None"),
+"Agent_Improvement_Rule": (Clear instruction to prevent this in future, or "None"),
+"Agent_Message_Problem": (Specific shortcoming in agent tone or logic, or "None"),
+"User_Message_Problem": (The underlying core issue expressed by user, or "None"),
+"Sentiment_Shift": (Emotional trend),
+"Bottleneck": (Technical/Process failure point),
+"Root_Cause": (Original source of error),
+"Summary_Insights": (1-sentence summary),
+"Accuracy_Score": (1-10),
+"Retention_Score": (1-10),
+"Compliance_Score": (1-10),
+"Engagement_Score": (1-10),
+"Primary_Inquiry_Type": (Type),
+"Product_Mentioned": (Product or "None")'''
 
-Return ONLY the JSON block. Do not include markdown code blocks.'''
-
+    # Reverting back to a stable known model endpoint as 'gemini-1.5-flash' caused a 404
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.1
+            "temperature": 0.1,
+            "maxOutputTokens": 1024
         }
     }
     
@@ -66,31 +72,51 @@ Return ONLY the JSON block. Do not include markdown code blocks.'''
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, json=payload, headers={'Content-Type': 'application/json'}, timeout=40.0)
                 if response.status_code != 200:
-                    raise Exception(f"HTTP {response.status_code}: {response.text}")
+                    raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
                 data = response.json()
                     
             content = data["candidates"][0]["content"]["parts"][0]["text"]
+
+            # Strip markdown code fences if present
+            content = re.sub(r'^```[a-z]*\s*', '', content.strip())
+            content = re.sub(r'```$', '', content.strip())
             
-            # Extract JSON if wrapped in markdown blocks
+            # Extract JSON block
             json_match = re.search(r'\{.*\}', content, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group(0))
-            return json.loads(content)
+                result = json.loads(json_match.group(0))
+            else:
+                result = json.loads(content)
+
+            # Sanitize null → "None" string for fields that expect strings
+            for key in ["Hallucination_Reason", "User_Frustration_Point", "Agent_Improvement_Rule",
+                        "Agent_Message_Problem", "User_Message_Problem", "Bottleneck",
+                        "Root_Cause", "Product_Mentioned"]:
+                if result.get(key) is None:
+                    result[key] = "None"
+
+            print(f"   ✅ Gemini responded successfully (attempt {attempt+1})")
+            return result
             
         except Exception as e:
             last_error = str(e)
+            print(f"   ⚠️  Attempt {attempt+1}/{max_retries} failed: {last_error[:120]}")
             if "404" in last_error:
-                print(f"Analysis skipping retries for 404 unsupported model: {e}. Falling back immediately.")
+                print(f"   ❌ 404 — Model not found. Falling back immediately.")
                 break
             
             if attempt < max_retries - 1:
                 if "429" in last_error or "quota" in last_error.lower():
-                    await asyncio.sleep(25 + (attempt * 10)) 
+                    wait = 25 + (attempt * 10)
+                    print(f"   ⏳ Rate-limited (429). Waiting {wait}s before retry...")
+                    await asyncio.sleep(wait)
                 else:
-                    await asyncio.sleep(2 ** attempt + 3) 
+                    wait = 2 ** attempt + 3
+                    print(f"   ⏳ Retrying in {wait}s...")
+                    await asyncio.sleep(wait)
                 continue
 
-            print(f"Analysis failed after {max_retries} attempts: {e}. Falling back to simulated data.")
+            print(f"   ❌ Analysis failed after {max_retries} attempts. Using mock fallback.")
             break
             
     return _generate_mock_data(transcript, f"Fallback Error: {last_error[:50]}")

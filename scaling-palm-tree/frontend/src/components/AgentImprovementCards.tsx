@@ -8,10 +8,16 @@ export default function AgentImprovementCards({ data }: { data: any[] }) {
     const arr: { tag: string; text: string; id: string }[] = [];
     if (d.evaluation?.Improvement_Suggestions && Array.isArray(d.evaluation.Improvement_Suggestions)) {
       d.evaluation.Improvement_Suggestions.forEach((s: string) => arr.push({ tag: 'Improvement', text: s, id: d.conversation_id }));
+    } else if (d.evaluation?.Agent_Improvement_Rule && d.evaluation.Agent_Improvement_Rule !== "None") {
+      arr.push({ tag: 'Improvement', text: d.evaluation.Agent_Improvement_Rule, id: d.conversation_id });
     }
+
     if (d.evaluation?.Agent_Frustration_Points && Array.isArray(d.evaluation.Agent_Frustration_Points)) {
       d.evaluation.Agent_Frustration_Points.forEach((s: string) => arr.push({ tag: 'Agent Friction', text: s, id: d.conversation_id }));
+    } else if (d.evaluation?.Agent_Message_Problem && d.evaluation.Agent_Message_Problem !== "None") {
+      arr.push({ tag: 'Agent Friction', text: d.evaluation.Agent_Message_Problem, id: d.conversation_id });
     }
+
     return arr;
   });
 
