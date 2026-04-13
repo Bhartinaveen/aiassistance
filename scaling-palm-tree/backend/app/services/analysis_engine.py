@@ -25,7 +25,9 @@ async def analyze_transcript(transcript: str) -> dict:
     else:
         clean_transcript = transcript
 
-    system_prompt = "Senior E-commerce QA Lead. Analyze raw chat logs and return a Health Report."
+    from datetime import datetime
+    current_date_str = datetime.now().strftime("%Y-%m-%d")
+    system_prompt = f"Senior E-commerce QA Lead. Analyze raw chat logs and return a Health Report. Today's current exact date is {current_date_str}. CRITICAL INSTRUCTION: Your training cutoff is 2025, but this system operates in 2026. Never flag a date (like 2026) as a 'future date' or a 'hallucination'. Ignore calendar/time logic completely and actively look for other fundamental customer-service or operational errors instead."
     
     prompt = f'''{system_prompt}
 Evaluate this chat. Flag generic/false info.
@@ -40,13 +42,14 @@ Return ONLY a JSON object with strictly these keys:
 "Hallucination_Reason": (If hallucination detected, explain exactly what was false, else "None"),
 "Checkout_Friction_Detected": (bool),
 "User_Frustration_Point": (Specific issue the user faced or "None"),
-"Agent_Improvement_Rule": (Clear instruction to prevent this in future, or "None"),
-"Agent_Message_Problem": (Specific shortcoming in agent tone or logic, or "None"),
-"User_Message_Problem": (The underlying core issue expressed by user, or "None"),
+"Agent_Improvement_Rule": (Clear, easy-to-understand instruction to fix this. Use technical words only when required, or "None"),
+"Agent_Message_Problem": (Clear, easy-to-understand description of the agent's mistake. Use technical words only when required, or "None"),
+"User_Message_Problem": (If there's friction, explain it. If the user made no mistakes, generate a dynamically positive observation based on their actions instead of leaving it empty or 'None'),
 "Sentiment_Shift": (Emotional trend),
 "Bottleneck": (Technical/Process failure point),
 "Root_Cause": (Original source of error),
-"Summary_Insights": (1-sentence summary),
+"Primary_Issue_Tag": (Generate a dynamic 2-4 word business-friendly tag for the most crucial outcome of the chat, e.g. 'Checkout Friction', 'AI Hallucination', 'User Dropoff', 'Flawless Interaction'),
+"Summary_Insights": (1-sentence issue overview in clear, easy-to-understand language. Use technical words only when required),
 "Accuracy_Score": (1-10),
 "Retention_Score": (1-10),
 "Compliance_Score": (1-10),
@@ -149,17 +152,18 @@ def _generate_mock_data(transcript: str, reason: str) -> dict:
     return {
         "Category": categories[hashed % len(categories)],
         "User_Satisfaction_Score": (hashed % 6) + 4, # Scores between 4-10
-        "Hallucination_Detected": bool(hashed % 2 == 0),
-        "Hallucination_Reason": hallucination_reasons[hashed % len(hallucination_reasons)] if bool(hashed % 2 == 0) else "None",
+        "Hallucination_Detected": bool(hashed % 6 == 0),
+        "Hallucination_Reason": hallucination_reasons[hashed % len(hallucination_reasons)] if bool(hashed % 6 == 0) else "None",
         "Checkout_Friction_Detected": bool(hashed % 3 == 0),
         "User_Frustration_Point": scenario["friction"] if bool(hashed % 3 == 0) else "None",
         "Agent_Improvement_Rule": scenario["rule"] if bool(hashed % 3 == 0) else "None",
         "Agent_Message_Problem": "Failed to offer relevant alternative" if bool(hashed % 3 == 0) else "None",
-        "User_Message_Problem": "Stuck at payment screen" if bool(hashed % 3 == 0) else "None",
+        "User_Message_Problem": "Stuck at payment screen" if bool(hashed % 3 == 0) else "User clearly provided order details and navigated smoothly.",
         "Sentiment_Shift": "Neutral to Positive" if hashed % 3 == 0 else "Neutral to Frustrated",
         "Bottleneck": intents[hashed % len(intents)] + " queries",
         "Root_Cause": root_causes[hashed % len(root_causes)],
-        "Summary_Insights": f"Simulated evaluation: {reason}",
+        "Primary_Issue_Tag": "Checkout Friction" if bool(hashed % 3 == 0) else "Flawless Interaction",
+        "Summary_Insights": "Simulated fallback summary for " + scenario["friction"],
         "Primary_Inquiry_Type": intents[hashed % len(intents)],
         "Product_Mentioned": products[hashed % len(products)],
         "Accuracy_Score": (hashed % 5) + 5,      # 5-10

@@ -39,68 +39,74 @@ app = FastAPI(title="AI QA & Analytics Engine")
 async def initialize_state():
     """
     Called on FastAPI startup.
-    - Connects to Atlas and loads conversations/messages into memory.
-    - Fetches all PREVIOUSLY analyzed reports from MongoDB so the dashboard 
-      and chat agent have data immediately, instead of waiting for a fresh run.
+    - Reads ANALYSIS_LIMIT from .env to know how many conversations to analyze.
+    - Clears the MongoDB analysis cache so every restart produces FRESH results.
+    - Launches a background fresh-analysis job for exactly ANALYSIS_LIMIT conversations.
+    
+    To change the number of conversations analyzed, edit ANALYSIS_LIMIT in .env
+    and restart the backend — no code changes needed.
     """
     from app.services.data_orchestration import initialize_data, _conversations_cache, _messages_cache
-    from app.services.cache_manager import get_all_cached_reports
-    
-    # ─────────────────────────────────────────────────────────────────
-    # NOTE: We do NOT clear the cache on startup anymore.
-    # This allows the system to resume from where it left off:
-    # - Previously analyzed conversations are loaded from MongoDB instantly.
-    # - Only NEW un-analyzed conversations will be sent to Gemini.
-    # - This means zero redundant API calls and zero wasted tokens!
-    # ─────────────────────────────────────────────────────────────────
-    
+    from app.services.cache_manager import clear_cache
+
+    # ── Read the configurable limit from .env ─────────────────────────────────
+    # ANALYSIS_LIMIT=30  → analyze 30 conversations on every restart (fresh)
+    # ANALYSIS_LIMIT=0   → analyze ALL conversations in the database
+    startup_limit = int(os.getenv("ANALYSIS_LIMIT", "30"))
+
+    print(f"\n{'🔄'*20}")
+    print(f"🔄 FRESH RESTART DETECTED")
+    print(f"   ANALYSIS_LIMIT = {startup_limit if startup_limit > 0 else 'ALL (unlimited)'} conversations")
+    print(f"   Clearing previous cache for a guaranteed fresh analysis...")
+    print(f"{'🔄'*20}\n")
+
     # 1. Initialize MongoDB connection and core data (conversations/messages)
     await initialize_data()
-    
-    # 2. Load any previously cached reports into memory RIGHT NOW
-    #    so the dashboard has data immediately on restart (no waiting for AI)
-    global recent_cache_data
-    existing_reports = await get_all_cached_reports()
-    if existing_reports:
-        recent_cache_data = existing_reports
-        print(f"\n⚡ STARTUP: Loaded {len(existing_reports)} previously analyzed conversations from cache.")
-        print(f"   Dashboard is ready immediately! Only new conversations will be sent to Gemini.\n")
-    
-    # 3. Trigger a fresh incremental analysis run in the background
-    #    It will automatically skip already-cached conversations.
-    print(f"🚀 AUTO-SCRAP: Triggering incremental background AI analysis on startup...\n")
-    asyncio.create_task(run_analysis())
-    
-    # 4. Show target summary (top 20) for review
-    start, end = 0, 20
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 2. ALWAYS clear the cache on startup so results are fresh every time.
+    #    This ensures the number configured in ANALYSIS_LIMIT is fully re-analyzed
+    #    with up-to-date conversation data — no stale reports from previous runs.
+    # ─────────────────────────────────────────────────────────────────────────
+    await clear_cache()
+    print(f"✅ Cache cleared — starting fresh analysis for {startup_limit if startup_limit > 0 else 'ALL'} conversations.\n")
+
+    # 3. Launch the background fresh-analysis job with the configured limit
+    print(f"🚀 AUTO-ANALYSIS: Triggering fresh background AI analysis on startup...\n")
+    asyncio.create_task(run_analysis(limit=startup_limit))
+
+    # 4. Show target summary for review in the terminal
     total = len(_conversations_cache)
-    actual_end = min(end, total)
-    batch = _conversations_cache[start:actual_end]
-    
+    actual_end = startup_limit if startup_limit > 0 else total
+    actual_end = min(actual_end, total)
+    batch = _conversations_cache[0:actual_end]
+
     if batch:
         print(f"{'='*70}")
-        print(f"📦 TARGET CONVERSATIONS: #{start+1} to #{actual_end} (out of {total} total)")
+        print(f"📦 TARGET CONVERSATIONS: #1 to #{actual_end} (out of {total} total in DB)")
         print(f"{'='*70}")
         print(f"{'#':<5} {'Conversation ID':<30} {'Widget/Brand':<28} {'Created'}")
         print(f"{'─'*70}")
-        for i, conv in enumerate(batch):
+        for i, conv in enumerate(batch[:20]):  # Show first 20 for readability
             conv_id = str(conv.get('_id', 'unknown'))
             widget_id = str(conv.get('widgetId', 'unknown'))
             created = str(conv.get('createdAt', 'unknown'))[:19]
-            print(f"{start+i+1:<5} {conv_id:<30} {widget_id[:26]:<28} {created}")
-        
-        # Count messages per conversation 
+            print(f"{i+1:<5} {conv_id:<30} {widget_id[:26]:<28} {created}")
+        if len(batch) > 20:
+            print(f"   ... and {len(batch) - 20} more (showing first 20 only)")
+
+        # Count messages per conversation
         msg_counts = {}
         for msg in _messages_cache:
             cid = msg.get('conversationId', '')
             if cid in [str(c.get('_id', '')) for c in batch]:
                 msg_counts[cid] = msg_counts.get(cid, 0) + 1
-        
+
         total_msgs = sum(msg_counts.values())
         print(f"{'─'*70}")
         print(f"📊 Total messages across these {len(batch)} conversations: {total_msgs}")
         print(f"{'='*70}")
-        print(f"\n⚡ SYSTEM READY — Background analysis is active. Dashboard will update live.\n")
+        print(f"\n⚡ SYSTEM READY — Fresh analysis is running in background. Dashboard will update live.\n")
 
 # Allow CORS for Next.js frontend 
 app.add_middleware(
@@ -324,6 +330,58 @@ async def run_analysis(limit: int = 20):
     print(f"{'='*60}\n")
         
     return {"status": "success", "data": reports, "skipped_ids": _analysis_progress["skipped_ids"]}
+
+@app.get("/api/analysis/single/{conv_id}")
+async def analyze_single_conversation(conv_id: str):
+    """
+    On-demand analysis for a single conversation ID.
+    If already cached, returns the cached version. Otherwise fetches from DB, sends to LLM, and caches.
+    """
+    global recent_cache_data
+    print(f"\n🔍 ON-DEMAND ANALYSIS REQUESTED: {conv_id}")
+    
+    # Check cache first
+    cache = await get_cached_analysis()
+    if conv_id in cache:
+        print(f"   ⚡ CACHE HIT for single analysis")
+        report = cache[conv_id]
+        return {"status": "success", "data": report}
+        
+    # Not in cache, fetch transcript manually
+    transcript, is_dropoff, loop_detected = await get_conversation_transcript(conv_id)
+    if not transcript:
+        return {"status": "error", "message": f"No transcript or messages found for {conv_id}."}
+        
+    print(f"   🤖 Sending {conv_id} to Gemini LLM for on-demand analysis...")
+    evaluation = await analyze_transcript(transcript)
+    
+    # Try to find the exact widgetId if it's currently loaded in _conversations_cache
+    widget_id = "OnDemand_Widget"
+    from app.services.data_orchestration import _conversations_cache
+    for c in _conversations_cache:
+        if str(c.get('_id')) == conv_id:
+            widget_id = str(c.get("widgetId", "Unknown_Widget"))
+            break
+            
+    report = {
+        "conversation_id": conv_id,
+        "widget_id": widget_id,
+        "dropoff": is_dropoff,
+        "loop_detected": loop_detected,
+        "evaluation": evaluation
+    }
+    
+    await save_to_cache(conv_id, report)
+    
+    # Add to recent cache data so chat can see it
+    existing_idx = next((i for i, r in enumerate(recent_cache_data) if r.get('conversation_id') == conv_id), -1)
+    if existing_idx >= 0:
+        recent_cache_data[existing_idx] = report
+    else:
+        recent_cache_data.insert(0, report)
+        
+    print(f"   ✅ On-demand analysis complete for {conv_id}.\n")
+    return {"status": "success", "data": report}
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):

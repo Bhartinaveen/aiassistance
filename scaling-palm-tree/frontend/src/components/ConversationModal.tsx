@@ -38,8 +38,13 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
     !hasHallucination && !hasFriction && !hasUserProblem && !hasAgentProblem && !report?.loop_detected
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-entry">
+  const clientFriendlyCause = ev.Primary_Issue_Tag || "Awaiting Tag";
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-entry">
       <div className="w-full max-w-5xl h-[85vh] bg-[#0A0A0C] border border-white/10 rounded-[2rem] flex flex-col md:flex-row overflow-hidden shadow-2xl">
         
         {/* Left Panel: Dynamically shows "Why Satisfied" OR "Issue Analysis" */}
@@ -179,16 +184,9 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
                   <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                     Score: {ev.User_Satisfaction_Score}/10
                   </span>
-                  {hasHallucination && (
-                    <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                      Hallucination
-                    </span>
-                  )}
-                  {hasFriction && (
-                    <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      Checkout Friction
-                    </span>
-                  )}
+                  <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    {clientFriendlyCause.length > 35 ? clientFriendlyCause.substring(0, 35) + '...' : clientFriendlyCause}
+                  </span>
                 </div>
               </div>
 
@@ -197,8 +195,8 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
                   <User size={14} className="text-blue-400" />
                   <p className="text-[10px] text-blue-400 uppercase tracking-wider font-bold">User Problem</p>
                 </div>
-                <p className={`text-xs ${(!ev.User_Message_Problem || ev.User_Message_Problem === "None") ? 'text-white/20 italic' : 'text-white/70'}`}>
-                  {(!ev.User_Message_Problem || ev.User_Message_Problem === "None") ? "No user friction detected." : ev.User_Message_Problem}
+                <p className={`text-xs ${(!ev.User_Message_Problem) ? 'text-white/20 italic' : 'text-white/80'}`}>
+                  {ev.User_Message_Problem || "Awaiting analysis..."}
                 </p>
               </div>
 
@@ -207,8 +205,8 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
                   <Bot size={14} className="text-purple-400" />
                   <p className="text-[10px] text-purple-400 uppercase tracking-wider font-bold">Agent Problem</p>
                 </div>
-                <p className={`text-xs ${(!ev.Agent_Message_Problem || ev.Agent_Message_Problem === "None") ? 'text-white/20 italic' : 'text-white/70'}`}>
-                   {(!ev.Agent_Message_Problem || ev.Agent_Message_Problem === "None") ? "Flow was accurate and logical." : ev.Agent_Message_Problem}
+                <p className={`text-xs ${(!ev.Agent_Message_Problem) ? 'text-white/20 italic' : 'text-white/80'}`}>
+                   {ev.Agent_Message_Problem || "Awaiting analysis..."}
                 </p>
               </div>
 
@@ -217,8 +215,8 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
                   <Zap size={14} className="text-primary" />
                   <p className="text-[10px] text-primary uppercase tracking-wider font-bold">Improvement Rule (Fix)</p>
                 </div>
-                <p className={`text-xs italic font-medium ${(!ev.Agent_Improvement_Rule || ev.Agent_Improvement_Rule === "None") ? 'text-white/40' : 'text-white/90'}`}>
-                  {(!ev.Agent_Improvement_Rule || ev.Agent_Improvement_Rule === "None") ? "Maintain current performance standards." : ev.Agent_Improvement_Rule}
+                <p className={`text-xs font-medium ${(!ev.Agent_Improvement_Rule) ? 'text-white/40 italic' : 'text-white/90'}`}>
+                  {ev.Agent_Improvement_Rule || "Awaiting analysis..."}
                 </p>
               </div>
 
@@ -275,4 +273,8 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  const { createPortal } = require('react-dom');
+  return createPortal(modalContent, document.body);
 }

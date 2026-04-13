@@ -1,13 +1,30 @@
 "use client";
 
 import { useState } from 'react';
-import { Bot, Send, User, X } from 'lucide-react';
+import { Bot, Send, User, X, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function ChatInterface({ onVisualizationChange }: { onVisualizationChange: (viz: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<{sender: 'user'|'bot', text: string}[]>([]);
   const [inputMsg, setInputMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Safely renders markdown bolding (** text **) and bullet points (* text)
+  const formatMessage = (text: string) => {
+    let formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>') // Bold text
+      .replace(/(?:\r\n|\r|\n)/g, '\n'); // Normalize newlines
+    
+    // Identify bullet lists (* item) and wrap them properly in HTML tags
+    formatted = formatted.replace(/(?:^|\n)\s*\*\s+(.*?)(?=\n|$)/g, '<li class="ml-6 list-disc mt-1.5">$1</li>');
+    formatted = formatted.replace(/(<li[^>]*>.*?<\/li>)+/g, '<ul class="my-2 pl-2 border-l border-white/10">$&</ul>');
+    
+    // Convert remaining newlines into HTML breaks
+    formatted = formatted.replace(/\n/g, '<br/>');
+    
+    return <div className="leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: formatted }} />;
+  };
 
   const handleSend = async () => {
     if (!inputMsg.trim() || loading) return;
@@ -47,7 +64,7 @@ export default function ChatInterface({ onVisualizationChange }: { onVisualizati
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 p-4 rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 text-white transition-all transform hover:scale-105"
+          className="fixed bottom-6 right-6 p-4 rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 text-white transition-all transform hover:scale-105 z-50"
         >
           <Bot size={28} />
         </button>
@@ -55,20 +72,27 @@ export default function ChatInterface({ onVisualizationChange }: { onVisualizati
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-3rem)] h-[500px] bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+        <div className={`fixed z-50 bottom-6 right-6 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 transition-all duration-300 ease-out origin-bottom-right ${
+            isExpanded ? 'w-[750px] max-w-[calc(100vw-3rem)] h-[85vh]' : 'w-96 max-w-[calc(100vw-3rem)] h-[500px]'
+        }`}>
           {/* Header */}
           <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
             <div className="flex items-center gap-2">
               <Bot className="text-indigo-400" size={20} />
               <h3 className="text-white/90 font-medium tracking-wide">AI Analytics Agent</h3>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/50 hover:text-white">
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setIsExpanded(!isExpanded)} className="p-1.5 text-white/50 hover:text-white rounded hover:bg-white/10 transition-colors" title={isExpanded ? "Collapse Size" : "Expand Size"}>
+                {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
+              <button onClick={() => setIsOpen(false)} className="p-1.5 text-white/50 hover:text-white rounded hover:bg-white/10 transition-colors" title="Close Chat">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
             {messages.length === 0 && (
               <div className="text-center text-white/40 mt-10 text-sm">
                 Ask me anything about the recent QA evaluation run...
@@ -82,24 +106,24 @@ export default function ChatInterface({ onVisualizationChange }: { onVisualizati
                 <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${m.sender === 'user' ? 'bg-neutral-800' : 'bg-indigo-600'}`}>
                   {m.sender === 'user' ? <User size={14} /> : <Bot size={14} />}
                 </div>
-                <div className={`p-3 rounded-2xl text-sm max-w-[80%] ${m.sender === 'user' ? 'bg-neutral-800 text-white/90 rounded-tr-sm' : 'bg-indigo-900/40 text-indigo-100 rounded-tl-sm border border-indigo-500/20'}`}>
-                  {m.text}
+                <div className={`p-4 rounded-2xl text-[13px] sm:text-sm max-w-[85%] shadow-sm ${m.sender === 'user' ? 'bg-neutral-800 text-white/90 rounded-tr-sm' : 'bg-indigo-950/50 text-indigo-100/90 rounded-tl-sm border border-indigo-500/20'}`}>
+                  {m.sender === 'bot' ? formatMessage(m.text) : m.text}
                 </div>
               </div>
             ))}
             
             {loading && (
               <div className="flex gap-3">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                   <Bot size={14} className="animate-pulse text-white" />
                 </div>
-                <div className="p-3 text-sm text-indigo-200">Thinking...</div>
+                <div className="p-4 text-sm text-indigo-300 animate-pulse">Analyzing matrix...</div>
               </div>
             )}
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-white/10 bg-black/20">
+          <div className="p-4 border-t border-white/10 bg-[#0A0A0C]">
             <div className="relative">
               <input 
                 type="text" 
@@ -107,15 +131,15 @@ export default function ChatInterface({ onVisualizationChange }: { onVisualizati
                 onChange={e => setInputMsg(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSend()}
                 placeholder="Ask about the data..."
-                className="w-full bg-white/5 border border-white/10 rounded-full py-3 pr-12 pl-4 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-white/5 border border-white/10 rounded-full py-3.5 pr-12 pl-4 text-sm text-white focus:outline-none focus:border-indigo-500 focus:bg-white/10 transition-all font-mono"
                 disabled={loading}
               />
               <button 
                 onClick={handleSend}
                 disabled={loading}
-                className="absolute right-2 top-2 p-1.5 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50"
+                className="absolute right-2 top-2 p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
               >
-                <Send size={16} />
+                <Send size={14} />
               </button>
             </div>
           </div>

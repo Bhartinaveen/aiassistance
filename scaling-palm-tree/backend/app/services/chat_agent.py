@@ -9,41 +9,51 @@ async def process_chat_query(user_query: str, recent_analysis_data: list) -> dic
             "target_visualization": "All"
         }
 
-    # Summarize data down to prevent massive context sizes
+    # Summarize data down while retaining maximum context for complex queries
     summary_blocks = []
     for d in recent_analysis_data:
-        summ = f"ConvID: {d.get('conversation_id')} | Brand: {d.get('widget_id')}"
+        summ = f"ConvID: {d.get('conversation_id')} | Brand: {d.get('widget_id')} | Dropoff: {d.get('dropoff', False)}"
         if 'evaluation' in d:
             e = d['evaluation']
-            summ += f"\nIntent: {e.get('Primary_Inquiry_Type')} | Product: {e.get('Product_Mentioned')}\n"
-            summ += f"Friction: {e.get('Checkout_Friction_Detected')} | Hallucination: {e.get('Hallucination_Detected')}\n"
+            summ += f"\nIntent: {e.get('Primary_Inquiry_Type')} | Category: {e.get('Category')} | Product: {e.get('Product_Mentioned')}\n"
+            summ += f"Issues -> Friction: {e.get('Checkout_Friction_Detected')} | Hallucination: {e.get('Hallucination_Detected')}\n"
+            summ += f"Problems -> User: {e.get('User_Message_Problem')} | Agent: {e.get('Agent_Message_Problem')} | Root Cause: {e.get('Root_Cause')}\n"
+            summ += f"Metrics -> Satisfaction: {e.get('User_Satisfaction_Score')}/10 | Sentiment: {e.get('Sentiment_Shift')}\n"
+            summ += f"Quality -> Acc:{e.get('Accuracy_Score')} Ret:{e.get('Retention_Score')} Comp:{e.get('Compliance_Score')} Eng:{e.get('Engagement_Score')}\n"
             summ += f"Insight: {e.get('Summary_Insights')}"
         summary_blocks.append(summ)
         
     context_str = "\n---\n".join(summary_blocks)
 
-    prompt = f'''You are a Multi-Brand Analytics Assistant.
-Answer the user's question based ONLY on the provided Recent Analysis Data which contains e-commerce chat insights.
+    prompt = f'''You are a helpful, brilliant Analytics Assistant for business clients.
+Analyze the provided 'Recent Analysis Data' carefully and answer the user's question.
+
+CRITICAL INSTRUCTIONS FOR YOUR ANALYSIS:
+1. Speak in clear, easy-to-understand, conversational English. Avoid overly complex tech jargon so non-technical users can easily understand your insights.
+2. Provide accurate, data-backed answers based ONLY on the provided metrics.
+3. Structure your 'reply_text' in a proper, easy-to-read format. Use **bolding** for key metrics, bullet points for lists, and short sentences.
+4. If the data lacks an answer, politely explain in simple terms that the required information isn't in the current dataset.
 
 Recent Analysis Data:
 {context_str}
 
 User Question: {user_query}
 
-Formulate an insightful response. Then, select the most appropriate Target Visualization:
+Formulate an insightful response. Then, select the most appropriate Target Visualization from the UI dashboard:
 - 'InquiryIntentChart' (Questions about general trends, common questions, or intent distribution)
 - 'ProductInterestCloud' (Questions about which products are most popular or mentioned)
-- 'CheckoutFrictionAlerts' (Questions about payment failures, checkout issues, or agent failures)
-- 'BrandComparisonChart' (Questions about how brands compare, who has more errors, or brand-specific performance)
+- 'CheckoutFrictionAlerts' / 'FrustrationHeatmap' (Questions about payment failures, checkout issues, or agent failures)
+- 'ModelWeaknessRadar' (Questions about AI scores, hallucinations, or agent weaknesses)
 - 'All' (General overview)
 
-Return ONLY valid JSON with keys "reply_text" and "target_visualization".'''
+Return ONLY a strictly valid JSON object with keys "reply_text" and "target_visualization". Ensure the JSON is properly escaped so the Markdown inside "reply_text" does not break parsing.'''
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.2
+            "temperature": 0.2,
+            "responseMimeType": "application/json"
         }
     }
     

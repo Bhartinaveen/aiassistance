@@ -131,9 +131,9 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-start md:justify-end gap-3 w-full md:w-auto">
             {/* 💡 Feature: Premium Interactive UI for Analysis Length */}
-            <div className="flex items-center gap-1 p-1 rounded-2xl glass border border-primary/20 bg-black/40 backdrop-blur-md shadow-[0_0_15px_rgba(139,92,246,0.1)]">
+            <div className="flex items-center flex-wrap sm:flex-nowrap gap-1 p-1 rounded-2xl glass border border-primary/20 bg-black/40 backdrop-blur-md shadow-[0_0_15px_rgba(139,92,246,0.1)] w-full sm:w-auto justify-center sm:justify-start">
               <div className="flex items-center pl-4 pr-2">
                 <span className="text-[9px] font-black text-white/50 uppercase tracking-[0.2em]">Volume</span>
                 <input 
@@ -146,11 +146,11 @@ export default function Home() {
                 />
               </div>
 
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              <div className="hidden sm:block w-px h-6 bg-white/10 mx-1"></div>
 
               <button
                 onClick={() => fetchAnalysisData(limitInput)}
-                className="px-4 py-2 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300"
+                className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300"
               >
                 Scan
               </button>
@@ -160,7 +160,7 @@ export default function Home() {
                   setLimitInput(0);
                   fetchAnalysisData(0);
                 }}
-                className="px-4 py-2 rounded-xl bg-white/5 text-white/70 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-white/20 hover:text-white transition-all duration-300 border border-white/5"
+                className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-white/5 text-white/70 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-white/20 hover:text-white transition-all duration-300 border border-white/5"
               >
                 Scan All
               </button>
@@ -170,12 +170,12 @@ export default function Home() {
                   consuming API tokens. Wipes MongoDB cache first, then
                   re-analyzes all conversations up to the current limit.
               ─────────────────────────────────────────────────────────── */}
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              <div className="hidden sm:block w-px h-6 bg-white/10 mx-1"></div>
               <button
                 onClick={forceRescan}
                 disabled={isClearing}
                 title="⚠️ Clears cache and re-analyzes fresh. Uses API tokens."
-                className="px-4 py-2 rounded-xl bg-red-900/20 text-red-400 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-red-500/30 hover:text-red-300 transition-all duration-300 border border-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-4 py-2 mt-2 sm:mt-0 w-full sm:w-auto flex-grow sm:flex-grow-0 rounded-xl bg-red-900/20 text-red-400 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-red-500/30 hover:text-red-300 transition-all duration-300 border border-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed justify-center items-center gap-1.5 flex"
               >
                 {isClearing ? (
                   <><span className="w-2.5 h-2.5 rounded-full border border-red-400 border-t-transparent animate-spin inline-block"></span> Clearing...</>
