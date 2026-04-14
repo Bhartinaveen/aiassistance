@@ -14,6 +14,6 @@ export const getApiUrl = () => {
     return "http://127.0.0.1:8000";
   }
 
-  // 3. Fallback to relative path (Works with Vercel rewrites)
-  return "/api";
+  // 3. Fallback to your live Render backend (Production)
+  return "https://aiassistance-kfib.onrender.com";
 };

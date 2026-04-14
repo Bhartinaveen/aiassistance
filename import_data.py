@@ -9,7 +9,7 @@ def import_data():
     # Load and import conversations
     conv_file = "conversations.json"
     if os.path.exists(conv_file):
-        with open(conv_file, "r") as f:
+        with open(conv_file, "r", encoding="utf-8") as f:
             conversations = json.load(f)
             db.conversations.drop() # Clean old data
             db.conversations.insert_many(conversations)
@@ -18,7 +18,7 @@ def import_data():
     # Load and import messages
     msg_file = "messages.json"
     if os.path.exists(msg_file):
-        with open(msg_file, "r") as f:
+        with open(msg_file, "r", encoding="utf-8") as f:
             messages = json.load(f)
             db.messages.drop() # Clean old data
             db.messages.insert_many(messages)
