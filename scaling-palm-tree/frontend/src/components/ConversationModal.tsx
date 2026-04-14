@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { X, MessageSquare, AlertTriangle, Zap, User, Bot, AlertCircle, CheckCircle2, Star, ThumbsUp, ShieldCheck, Cpu } from 'lucide-react';
 
+import { getApiUrl } from '@/config';
+
 interface ConversationModalProps {
   convId: string;
   report: any; // The full report object from the analysis
@@ -13,7 +15,7 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const apiUrl = getApiUrl();
     fetch(`${apiUrl}/api/conversation/${convId}/messages`)
       .then(res => res.json())
       .then(data => {

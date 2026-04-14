@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { AlertCircle, AlertTriangle, ShieldAlert, Cpu, Search, Copy } from 'lucide-react';
 import ConversationModal from './ConversationModal';
 
+import { getApiUrl } from '@/config';
+
 export default function ProblemConversationsList({ data }: { data: any[] }) {
   const [selectedConv, setSelectedConv] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,7 +25,7 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
     if (!searchQuery) return;
     setIsAnalyzing(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/analysis/single/${searchQuery.trim()}`);
       const resData = await res.json();
       if (resData.status === "success" && resData.data) {

@@ -8,6 +8,7 @@ import FrustrationHeatmap from '@/components/FrustrationHeatmap';
 import ModelWeaknessRadar from '@/components/ModelWeaknessRadar';
 import ChatInterface from '@/components/ChatInterface';
 import ProblemConversationsList from '@/components/ProblemConversationsList';
+import { getApiUrl } from '@/config';
 
 export default function Home() {
   const [allData, setAllData] = useState<any[]>([]);
@@ -32,7 +33,7 @@ export default function Home() {
     setLoading(true);
     setIsStopping(false);
     setProgress(null);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const apiUrl = getApiUrl();
     const MAX_RETRIES = 5;
 
     // ── Step 1: Health-check first — verify backend is reachable ─────────────
@@ -104,7 +105,7 @@ export default function Home() {
   // 🛑 STOP ANALYSIS: Sends a stop signal to the backend to halt the current run
   const stopAnalysis = () => {
     setIsStopping(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const apiUrl = getApiUrl();
     // POST to /api/analysis/stop — the backend sets _stop_flag=True
     // The analysis loop checks this flag on each iteration and breaks immediately
     fetch(`${apiUrl}/api/analysis/stop`, { method: "POST" })
@@ -118,7 +119,7 @@ export default function Home() {
     if (!confirm(`⚠️ Force Re-scan will CLEAR all ${limitInput || 'all'} cached analyses and re-run fresh AI analysis.\n\nThis uses Gemini API tokens for every conversation.\n\nAre you sure?`)) return;
     setIsClearing(true);
     setLoading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const apiUrl = getApiUrl();
     
     // Calls DELETE /api/analysis/clear-cache which: (1) wipes MongoDB cache, (2) re-runs fresh Gemini analysis
     fetch(`${apiUrl}/api/analysis/clear-cache?limit=${limitInput}`, { method: "DELETE" })
@@ -136,7 +137,7 @@ export default function Home() {
   useEffect(() => {
     // On mount: only check backend health — do NOT auto-trigger analysis
     const checkBackend = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = getApiUrl();
       try {
         setBackendStatus('connecting');
         const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(5000) });
@@ -301,8 +302,8 @@ export default function Home() {
             <div className="text-center max-w-sm">
               <p className="text-red-400 font-black tracking-widest uppercase text-sm mb-2">Backend Unreachable</p>
               <p className="text-white/30 text-[11px] leading-relaxed">
-                Could not connect to <span className="font-mono text-white/50">http://127.0.0.1:8000</span>.<br />
-                Make sure the backend is running with <span className="font-mono text-primary/70">uvicorn app.main:app --reload</span>
+                Could not connect to <span className="font-mono text-white/50">{getApiUrl()}</span>.<br />
+                Make sure the backend is running and the <span className="font-mono text-primary/70">NEXT_PUBLIC_API_URL</span> is correct.
               </p>
             </div>
             <button

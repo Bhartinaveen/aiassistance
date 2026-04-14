@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Bot, Send, User, X, Maximize2, Minimize2 } from 'lucide-react';
+import { getApiUrl } from '@/config';
 
 export default function ChatInterface({ onVisualizationChange }: { onVisualizationChange: (viz: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function ChatInterface({ onVisualizationChange }: { onVisualizati
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
