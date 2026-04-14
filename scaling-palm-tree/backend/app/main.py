@@ -39,74 +39,25 @@ app = FastAPI(title="AI QA & Analytics Engine")
 async def initialize_state():
     """
     Called on FastAPI startup.
-    - Reads ANALYSIS_LIMIT from .env to know how many conversations to analyze.
-    - Clears the MongoDB analysis cache so every restart produces FRESH results.
-    - Launches a background fresh-analysis job for exactly ANALYSIS_LIMIT conversations.
-    
-    To change the number of conversations analyzed, edit ANALYSIS_LIMIT in .env
-    and restart the backend — no code changes needed.
+    - Initializes the MongoDB connection and loads conversation/message data.
+    - Clears the analysis cache so the next Scan always produces fresh AI results.
+    - Does NOT trigger any analysis automatically — fully demand-driven from the dashboard.
     """
-    from app.services.data_orchestration import initialize_data, _conversations_cache, _messages_cache
+    from app.services.data_orchestration import initialize_data
     from app.services.cache_manager import clear_cache
 
-    # ── Read the configurable limit from .env ─────────────────────────────────
-    # ANALYSIS_LIMIT=30  → analyze 30 conversations on every restart (fresh)
-    # ANALYSIS_LIMIT=0   → analyze ALL conversations in the database
-    startup_limit = int(os.getenv("ANALYSIS_LIMIT", "30"))
+    print(f"\n{'='*60}")
+    print(f"🟢 AI CHAT ANALYTICS BACKEND STARTED")
+    print(f"   Initializing database connection...")
+    print(f"{'='*60}\n")
 
-    print(f"\n{'🔄'*20}")
-    print(f"🔄 FRESH RESTART DETECTED")
-    print(f"   ANALYSIS_LIMIT = {startup_limit if startup_limit > 0 else 'ALL (unlimited)'} conversations")
-    print(f"   Clearing previous cache for a guaranteed fresh analysis...")
-    print(f"{'🔄'*20}\n")
-
-    # 1. Initialize MongoDB connection and core data (conversations/messages)
+    # 1. Initialize MongoDB connection and load conversations/messages into memory
     await initialize_data()
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # 2. ALWAYS clear the cache on startup so results are fresh every time.
-    #    This ensures the number configured in ANALYSIS_LIMIT is fully re-analyzed
-    #    with up-to-date conversation data — no stale reports from previous runs.
-    # ─────────────────────────────────────────────────────────────────────────
+    # 2. Clear old analysis cache so every restart gives FRESH results on next Scan
     await clear_cache()
-    print(f"✅ Cache cleared — starting fresh analysis for {startup_limit if startup_limit > 0 else 'ALL'} conversations.\n")
-
-    # 3. Launch the background fresh-analysis job with the configured limit
-    print(f"🚀 AUTO-ANALYSIS: Triggering fresh background AI analysis on startup...\n")
-    asyncio.create_task(run_analysis(limit=startup_limit))
-
-    # 4. Show target summary for review in the terminal
-    total = len(_conversations_cache)
-    actual_end = startup_limit if startup_limit > 0 else total
-    actual_end = min(actual_end, total)
-    batch = _conversations_cache[0:actual_end]
-
-    if batch:
-        print(f"{'='*70}")
-        print(f"📦 TARGET CONVERSATIONS: #1 to #{actual_end} (out of {total} total in DB)")
-        print(f"{'='*70}")
-        print(f"{'#':<5} {'Conversation ID':<30} {'Widget/Brand':<28} {'Created'}")
-        print(f"{'─'*70}")
-        for i, conv in enumerate(batch[:20]):  # Show first 20 for readability
-            conv_id = str(conv.get('_id', 'unknown'))
-            widget_id = str(conv.get('widgetId', 'unknown'))
-            created = str(conv.get('createdAt', 'unknown'))[:19]
-            print(f"{i+1:<5} {conv_id:<30} {widget_id[:26]:<28} {created}")
-        if len(batch) > 20:
-            print(f"   ... and {len(batch) - 20} more (showing first 20 only)")
-
-        # Count messages per conversation
-        msg_counts = {}
-        for msg in _messages_cache:
-            cid = msg.get('conversationId', '')
-            if cid in [str(c.get('_id', '')) for c in batch]:
-                msg_counts[cid] = msg_counts.get(cid, 0) + 1
-
-        total_msgs = sum(msg_counts.values())
-        print(f"{'─'*70}")
-        print(f"📊 Total messages across these {len(batch)} conversations: {total_msgs}")
-        print(f"{'='*70}")
-        print(f"\n⚡ SYSTEM READY — Fresh analysis is running in background. Dashboard will update live.\n")
+    print(f"🗑️  Previous analysis cache cleared — ready for fresh scan.")
+    print(f"\n✅ Backend is online. Open the dashboard and click Scan to begin analysis.\n")
 
 # Allow CORS for Next.js frontend 
 app.add_middleware(
@@ -186,12 +137,14 @@ async def get_messages(conv_id: str):
     return {"status": "success", "messages": messages}
 
 @app.get("/api/analysis/run")
-async def run_analysis(limit: int = 20):
+async def run_analysis(limit: int = 0):
     """
-    Kicks off an evaluation of the system, fetches conversations, 
-    uses a local cache to avoid redundant AI calls, and returns reports.
+    Runs analysis for the specified number of conversations.
+    limit=0  → analyze ALL conversations in the database (no cap).
+    limit=N  → analyze exactly N conversations.
     
-    NOTE: limit=20 by default. Pass limit=0 to process ALL conversations in the database.
+    Results are cached in MongoDB. Subsequent runs with a higher limit will
+    only send NEW (uncached) conversations to the AI — saving tokens.
     """
     from datetime import datetime
     global _stop_flag, _analysis_progress
@@ -206,14 +159,7 @@ async def run_analysis(limit: int = 20):
     print(f"🎯 Target Limit Set To: {'ALL CONVERSATIONS (Full Database)' if limit == 0 else f'{limit} Conversations'}")
     print(f"{'🚀'*20}\n")
     
-    # 💡 TIP: By default, this limits analysis to 20 conversations to save API tokens.
-    # If someone wants to analyze ALL conversation data, they can choose to do that
-    # by setting limit=0 (e.g., calling the API via GET /api/analysis/run?limit=0).
-    # 
-    # HOW IT WORKS:
-    # We assign `-1` as the variable here when `limit=0` is passed.
-    # The `fetch_all_conversations` data fetcher sees `-1` and automatically 
-    # calculates `len(_conversations_cache)` to set the exact max possible target!
+    # limit=0 means analyze ALL → we pass -1 to fetch_all_conversations which interprets it as "no limit"
     end = limit if limit > 0 else -1
     conversations = await fetch_all_conversations(start=0, end=end)
     cache = await get_cached_analysis()
@@ -270,9 +216,16 @@ async def run_analysis(limit: int = 20):
             continue
         
         new_count += 1
-        print(f"   🤖 Sending to Gemini LLM for analysis...")
+        print(f"   🤖 Sending to Gemma 3 27B for analysis...")
         evaluation = await analyze_transcript(transcript)
-        
+
+        # Guard: If LLM returned None (API error/503), skip this conversation
+        if evaluation is None:
+            print(f"   ⚠️  Skipping conv {conv_id} — LLM returned no result (API failure).")
+            _analysis_progress["done"] += 1
+            await asyncio.sleep(2)
+            continue
+
         report = {
             "conversation_id": conv_id,
             "widget_id": widget_id,
@@ -296,7 +249,7 @@ async def run_analysis(limit: int = 20):
         reports.append(report)
         
         # Update live progress state after each new analysis
-        _analysis_progress["done"] = len(reports)
+        _analysis_progress["done"] += 1
         _analysis_progress["new"] = new_count
         
         # Slight delay to respect Rate Limits only when hitting the AI
@@ -319,7 +272,7 @@ async def run_analysis(limit: int = 20):
     if new_count == 0:
         print(f"   💡 All conversations were already cached — zero tokens consumed!")
     elif cached_count > 0:
-        print(f"   💡 Incremental run: only {new_count} new conversations were analyzed.")
+        print(f"   💡 Incremental run: only {new_count} new conversations sent to Gemma 3 27B.")
     if reports:
         scores = [r.get("evaluation", {}).get("User_Satisfaction_Score", 0) for r in reports]
         hall_count = sum(1 for r in reports if r.get("evaluation", {}).get("Hallucination_Detected") == True)
@@ -352,7 +305,7 @@ async def analyze_single_conversation(conv_id: str):
     if not transcript:
         return {"status": "error", "message": f"No transcript or messages found for {conv_id}."}
         
-    print(f"   🤖 Sending {conv_id} to Gemini LLM for on-demand analysis...")
+    print(f"   🤖 Sending {conv_id} to Gemma 3 27B for on-demand analysis...")
     evaluation = await analyze_transcript(transcript)
     
     # Try to find the exact widgetId if it's currently loaded in _conversations_cache

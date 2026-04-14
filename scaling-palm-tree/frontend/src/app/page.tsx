@@ -14,23 +14,58 @@ export default function Home() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState<string>("All Brands");
-  const [limitInput, setLimitInput] = useState<number>(20);
+  const [limitInput, setLimitInput] = useState<number | string>("");
   // isClearing tracks when the user triggered a Force Re-scan (cache wipe)
   const [isClearing, setIsClearing] = useState(false);
   // isStopping tracks when the user has pressed the Stop button
   const [isStopping, setIsStopping] = useState(false);
-   // progress holds the real-time analysis state polled from the backend
+  // progress holds the real-time analysis state polled from the backend
   const [progress, setProgress] = useState<{ running: boolean; total: number; done: number; stopped: boolean; skipped_ids?: string[] } | null>(null);
   const [skippedIds, setSkippedIds] = useState<string[]>([]);
+  // backendStatus: null = unknown, 'connecting' = retrying, 'online' = ok, 'offline' = unreachable
+  const [backendStatus, setBackendStatus] = useState<'connecting' | 'online' | 'offline' | null>(null);
+  const [retryCountdown, setRetryCountdown] = useState<number>(0);
 
   // 💡 TO ANALYZE CUSTOM DATA LIMITS: This function grabs the user's preference and feeds it to the Backend
-  const fetchAnalysisData = (targetLimit: number) => {
+  // Includes automatic retry with exponential backoff for when the backend is starting up.
+  const fetchAnalysisData = async (targetLimit: number, attempt = 0) => {
     setLoading(true);
     setIsStopping(false);
     setProgress(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    
-    // 📡 Start polling /api/analysis/progress every 1 second for real-time counter
+    const MAX_RETRIES = 5;
+
+    // ── Step 1: Health-check first — verify backend is reachable ─────────────
+    // Uses a manual AbortController for broad browser compatibility
+    try {
+      setBackendStatus('connecting');
+      const healthCtrl = new AbortController();
+      const healthTimer = setTimeout(() => healthCtrl.abort(), 5000);
+      const health = await fetch(`${apiUrl}/`, { signal: healthCtrl.signal });
+      clearTimeout(healthTimer);
+      if (!health.ok) throw new Error('Backend not ready');
+      setBackendStatus('online');
+    } catch {
+      if (attempt < MAX_RETRIES) {
+        // Exponential backoff: 3s, 5s, 8s, 12s, 17s
+        const delay = 3 + attempt * (attempt + 1);
+        console.warn(`[Engine] Backend not reachable. Retry ${attempt + 1}/${MAX_RETRIES} in ${delay}s...`);
+        setBackendStatus('connecting');
+        // Live countdown UI
+        for (let i = delay; i > 0; i--) {
+          setRetryCountdown(i);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        setRetryCountdown(0);
+        return fetchAnalysisData(targetLimit, attempt + 1);
+      }
+      // All retries exhausted
+      setBackendStatus('offline');
+      setLoading(false);
+      return;
+    }
+
+    // ── Step 2: Start polling /api/analysis/progress for real-time counter ───
     const pollInterval = setInterval(async () => {
       try {
         const res = await fetch(`${apiUrl}/api/analysis/progress`);
@@ -38,24 +73,30 @@ export default function Home() {
         if (d.status === "success") {
           setProgress(d.progress);
           if (d.progress.skipped_ids) setSkippedIds(d.progress.skipped_ids);
-          // Stop polling once the backend signals it is no longer running
           if (!d.progress.running) clearInterval(pollInterval);
         }
       } catch { clearInterval(pollInterval); }
     }, 1000);
-    
-    // Calls the dynamic API parameter feature built in the backend
+
+    // ── Step 3: Trigger the main analysis run (allow up to 10 min for Gemma 3 27B) ──
+    // Gemma 3 27B can take several minutes for 20 conversations — we never abort it early.
+    // The progress poller above keeps the UI updated while we wait.
     fetch(`${apiUrl}/api/analysis/run?limit=${targetLimit}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(resData => {
         if (resData.status === "success") {
           setAllData(resData.data);
           setData(resData.data);
           if (resData.skipped_ids) setSkippedIds(resData.skipped_ids);
+          setBackendStatus('online');
         }
       })
       .catch((e) => {
-        console.warn("Backend unavailable", e);
+        // Only warn — don't mark offline if data already loaded via progress polling
+        console.warn("[Engine] Analysis run error:", e.message);
       })
       .finally(() => { setLoading(false); clearInterval(pollInterval); setProgress(null); });
   };
@@ -93,8 +134,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Initial load keeps the 20 lock token-saver
-    fetchAnalysisData(limitInput);
+    // On mount: only check backend health — do NOT auto-trigger analysis
+    const checkBackend = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      try {
+        setBackendStatus('connecting');
+        const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(5000) });
+        setBackendStatus(res.ok ? 'online' : 'offline');
+      } catch {
+        setBackendStatus('offline');
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkBackend();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -109,25 +162,33 @@ export default function Home() {
   const brands = Array.from(new Set(allData.map(d => d.widget_id || d.widgetId))).filter(Boolean);
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {/* Abstract Background Elements */}
-      <div className="fixed inset-0 -z-10 bg-[#020203]">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px]" />
+    <main className="min-h-screen relative overflow-hidden bg-[#05050a]">
+      {/* ── Multidimensional Premium Background ── */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        {/* Main subtle gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#05050a] via-[#0a0a1a] to-[#05050a]" />
+        
+        {/* Animated dynamic glows (aurora style) */}
+        <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[140px] animate-mesh" />
+        <div className="absolute bottom-[-15%] right-[-5%] w-[50%] h-[50%] rounded-full bg-blue-500/15 blur-[140px] animate-mesh" style={{ animationDelay: '-4s' }} />
+        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-accent/10 blur-[120px] animate-mesh" style={{ animationDelay: '-7s' }} />
+
+        {/* Subtle grid pattern for texture */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-8">
-        {/* Navigation / Header */}
-        <nav className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 animate-entry">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-primary/20 border border-primary/30 glow-primary">
-              <Cpu className="text-primary" size={24} />
+      <div className="max-w-[1700px] mx-auto px-6 lg:px-10 py-10">
+        {/* ── Modern Navigation / Header ── */}
+        <nav className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16 animate-entry">
+          <div className="flex items-center gap-5">
+            <div className="p-4 rounded-3xl glass-premium border border-primary/30 glow-primary">
+              <Cpu className="text-primary-foreground" size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                Nvn..B <span className="text-primary font-light text-sm tracking-[0.3em] ml-2 opacity-50 uppercase">OS</span>
+              <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                AI CHAT <span className="text-primary font-bold text-xs tracking-[0.4em] ml-2 opacity-60 uppercase border-l border-white/20 pl-4">ANALYTICS</span>
               </h1>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Behavior Engine</p>
+              <p className="text-[11px] text-white/50 uppercase tracking-[0.3em] font-bold mt-1">SUPPORT QUALITY DASHBOARD</p>
             </div>
           </div>
 
@@ -139,9 +200,9 @@ export default function Home() {
                 <input 
                   type="number"
                   min="1"
-                  value={limitInput === 0 ? "" : limitInput}
-                  onChange={(e) => setLimitInput(Number(e.target.value) || 0)}
-                  placeholder="∞"
+                  value={limitInput}
+                  onChange={(e) => setLimitInput(Number(e.target.value) || "")}
+                  placeholder="#"
                   className="bg-transparent text-lg font-black text-primary outline-none w-14 text-center border-none p-0 focus:ring-0 placeholder:text-primary/40 ml-2"
                 />
               </div>
@@ -149,15 +210,16 @@ export default function Home() {
               <div className="hidden sm:block w-px h-6 bg-white/10 mx-1"></div>
 
               <button
-                onClick={() => fetchAnalysisData(limitInput)}
-                className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300"
+                onClick={() => { if (Number(limitInput) > 0) fetchAnalysisData(Number(limitInput)); }}
+                disabled={!limitInput || Number(limitInput) < 1}
+                className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Scan
               </button>
 
               <button
                 onClick={() => {
-                  setLimitInput(0);
+                  setLimitInput("");
                   fetchAnalysisData(0);
                 }}
                 className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-white/5 text-white/70 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-white/20 hover:text-white transition-all duration-300 border border-white/5"
@@ -186,7 +248,7 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl glass border border-white/5">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Active Brand</span>
+              <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">View session</span>
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
@@ -230,40 +292,131 @@ export default function Home() {
           </div>
         </nav>
 
-        {loading ? (
-          <div className="flex flex-col h-[60vh] items-center justify-center gap-6 glass rounded-[2.5rem] border-dashed border-white/5 animate-pulse">
+        {/* ── Offline / Error State ─────────────────────────────────────────── */}
+        {!loading && backendStatus === 'offline' ? (
+          <div className="flex flex-col h-[60vh] items-center justify-center gap-6 glass rounded-[2.5rem] border border-red-500/20">
+            <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20">
+              <AlertTriangle className="text-red-400" size={32} />
+            </div>
+            <div className="text-center max-w-sm">
+              <p className="text-red-400 font-black tracking-widest uppercase text-sm mb-2">Backend Unreachable</p>
+              <p className="text-white/30 text-[11px] leading-relaxed">
+                Could not connect to <span className="font-mono text-white/50">http://127.0.0.1:8000</span>.<br />
+                Make sure the backend is running with <span className="font-mono text-primary/70">uvicorn app.main:app --reload</span>
+              </p>
+            </div>
+            <button
+              onClick={() => { setLoading(true); fetchAnalysisData(Number(limitInput) || 0); }}
+              className="mt-2 px-6 py-2.5 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300 border border-primary/30"
+            >
+              ↺ Retry Connection
+            </button>
+          </div>
+
+        ) : loading ? (
+          <div className="flex flex-col h-[60vh] items-center justify-center gap-6 glass rounded-[2.5rem] border-dashed border-white/5">
             <div className="relative">
               <div className="w-16 h-16 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
               <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" size={20} />
             </div>
             <div className="text-center">
-              <p className="text-white font-bold tracking-widest uppercase text-xs">Synchronizing Neural Data</p>
-              <p className="text-white/20 text-[10px] mt-2">Connecting to decentralized analysis nodes...</p>
+              {backendStatus === 'connecting' && retryCountdown > 0 ? (
+                <>
+                  <p className="text-yellow-400 font-black tracking-widest uppercase text-xs animate-pulse">Backend Starting Up...</p>
+                  <p className="text-white/30 text-[10px] mt-2">
+                    Retrying in <span className="font-mono text-yellow-400 font-bold">{retryCountdown}s</span> — uvicorn may still be initializing
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-white font-bold tracking-widest uppercase text-xs">Analyzing Conversations...</p>
+                  <p className="text-white/20 text-[10px] mt-2">
+                    {progress?.running
+                      ? `Processing ${progress.done} of ${progress.total} conversations — please wait`
+                      : 'Connecting to AI analysis engine...'}
+                  </p>
+                </>
+              )}
             </div>
           </div>
+
+        ) : allData.length === 0 ? (
+          // ── Welcome / Empty State — shown when no analysis has been run yet ──
+          <div className="flex flex-col items-center justify-center min-h-[65vh] gap-10 animate-entry">
+            <div className="text-center max-w-xl">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2rem] glass-premium border border-primary/30 glow-primary mb-8">
+                <Cpu className="text-primary" size={40} />
+              </div>
+              <h2 className="text-4xl font-black text-white tracking-tight mb-4">Ready to Analyze</h2>
+              <p className="text-white/40 text-sm leading-relaxed">
+                Enter the number of conversations you want to review, then click <span className="text-primary font-bold">Scan</span> to start the AI analysis.
+                You can always increase the number and scan again to load more — previously analyzed data is cached and won't use extra tokens.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-3 p-3 pl-6 rounded-2xl glass-premium border border-primary/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]">
+                <span className="text-white/50 text-xs font-black uppercase tracking-widest whitespace-nowrap">How many?</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={limitInput}
+                  onChange={(e) => setLimitInput(Number(e.target.value) || "")}
+                  placeholder="e.g. 20"
+                  className="bg-transparent text-2xl font-black text-primary outline-none w-24 text-center border-none p-0 focus:ring-0 placeholder:text-primary/20"
+                />
+              </div>
+              <button
+                onClick={() => { if (Number(limitInput) > 0) fetchAnalysisData(Number(limitInput)); }}
+                disabled={!limitInput || Number(limitInput) < 1}
+                className="px-8 py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-[0.2em] hover:scale-105 transition-all glow-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                Start Analysis
+              </button>
+              <button
+                onClick={() => { setLimitInput(0); fetchAnalysisData(0); }}
+                className="px-8 py-4 rounded-2xl glass border border-white/10 text-white/50 font-black text-sm uppercase tracking-[0.2em] hover:text-white hover:border-white/30 transition-all"
+              >
+                Analyze All
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mt-4">
+              {[
+                { icon: Zap, title: "Smart Caching", desc: "Re-scanning higher numbers only sends new conversations to the AI — saving tokens." },
+                { icon: Activity, title: "Real-time Progress", desc: "Watch the analysis run live with per-conversation progress tracking." },
+                { icon: AlertTriangle, title: "Quality Insights", desc: "Instantly see satisfaction scores, hallucination rates, and customer pain points." },
+              ].map((tip, i) => (
+                <div key={i} className="p-5 rounded-2xl glass border border-white/5 flex flex-col gap-2">
+                  <tip.icon size={16} className="text-primary/60" />
+                  <p className="text-white/70 text-xs font-bold">{tip.title}</p>
+                  <p className="text-white/30 text-[11px] leading-relaxed">{tip.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         ) : (
           <div className="space-y-8 pb-32">
             {/* Top Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-entry" style={{ animationDelay: '0.1s' }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-entry" style={{ animationDelay: '0.1s' }}>
               {(() => {
                 const total = data.length || 1;
-                const avgScore = data.length > 0
-                  ? (data.reduce((sum, d) => sum + (d.evaluation?.User_Satisfaction_Score || 0), 0) / total).toFixed(1)
-                  : "0";
-                const hallucinationRate = data.length > 0
-                  ? ((data.filter(d => d.evaluation?.Hallucination_Detected === true).length / total) * 100).toFixed(1)
+                const isTrue = (v: any) => v === true || v === "true" || v === "yes" || v === 1;
+                const scores = data.map(d => parseFloat(d.evaluation?.User_Satisfaction_Score)).filter(n => !isNaN(n) && n > 0);
+                const avgScore = scores.length > 0
+                  ? (scores.reduce((s, n) => s + n, 0) / scores.length).toFixed(1)
                   : "0";
                 const dropoffRate = data.length > 0
-                  ? ((data.filter(d => d.dropoff === true).length / total) * 100).toFixed(1)
+                  ? ((data.filter(d => isTrue(d.dropoff)).length / total) * 100).toFixed(1)
                   : "0";
 
                 return [
                   { label: "Avg User Satisfaction", value: `${avgScore}/10`, icon: Zap, color: "text-yellow-400" },
-                  { label: "Agent Hallucination Rate", value: `${hallucinationRate}%`, icon: AlertTriangle, color: "text-red-400" },
                   { label: "User Dropout Rate", value: `${dropoffRate}%`, icon: Activity, color: "text-orange-400" },
                   { label: "Total Conversations", value: `${data.length}`, icon: Info, color: "text-blue-400" },
                 ].map((stat, i) => (
-                  <div key={i} className="p-4 rounded-3xl glass-card flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
+                  <div key={i} className="p-4 rounded-3xl glass-premium flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
                     <div>
                       <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">{stat.label}</span>
                       <span className="text-xl font-black text-white/90">{stat.value}</span>
@@ -276,10 +429,10 @@ export default function Home() {
 
             {/* Main Visualizations Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.2s' }}>
+              <div className="glass-premium rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.2s' }}>
                 <div className="p-6 pb-0">
                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                    <TrendingUp size={14} className="text-primary" /> Behavioral Intent Map
+                    <TrendingUp size={14} className="text-primary" /> User Intent Map
                   </h3>
                 </div>
                 <div className="h-[400px]">
@@ -289,7 +442,7 @@ export default function Home() {
               <div className="glass-card rounded-[2.5rem] p-1 animate-entry" style={{ animationDelay: '0.3s' }}>
                 <div className="p-6 pb-0">
                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
-                    <AlertTriangle size={14} className="text-red-400" /> Agent Capability Profile
+                    <AlertTriangle size={14} className="text-red-400" /> AI Performance Radar
                   </h3>
                 </div>
                 <div className="h-[400px]">
@@ -314,7 +467,7 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-8 animate-entry" style={{ animationDelay: '0.6s' }}>
               <div className="glass-card rounded-[2.5rem] p-8 overflow-hidden">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
-                  <Zap size={14} className="text-yellow-400" /> Frustration Heatmap
+                  <Zap size={14} className="text-yellow-400" /> Issue Heatmap
                 </h3>
                 <FrustrationHeatmap data={data} />
               </div>
@@ -330,7 +483,7 @@ export default function Home() {
               <div className="animate-entry mt-12 mb-4 p-8 rounded-[2.5rem] glass border border-red-500/10" style={{ animationDelay: '0.75s' }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-1.5 h-4 rounded-full bg-red-400 opacity-50"></div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-red-400/60">Skipped Analysis Audit</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-red-400/60">Data Integrity Audit</h3>
                   <span className="text-[10px] text-white/20 ml-auto font-mono uppercase tracking-widest">{Array.from(new Set(skippedIds)).length} Empty Transactions Detected</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -356,8 +509,8 @@ export default function Home() {
                     <Cpu className="text-primary" size={20} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black tracking-tight text-white uppercase">Nvn..B <span className="text-primary font-light text-xs tracking-[0.3em] ml-1 opacity-50 uppercase">OS</span></h2>
-                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-[0.2em]">AI Behavior Engine</p>
+                    <h2 className="text-lg font-black tracking-tight text-white uppercase">AI CHAT <span className="text-primary font-light text-xs tracking-[0.3em] ml-1 opacity-50 uppercase">ANALYTICS</span></h2>
+                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-[0.2em]">Support Quality Dashboard</p>
                   </div>
                 </div>
 

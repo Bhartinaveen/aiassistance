@@ -10,12 +10,12 @@ export default function ProductInterestCloud({ data }: { data: any[] }) {
 
   data.forEach(d => {
     const raw = d.evaluation?.Product_Mentioned || "None";
-    if (raw === "None" || raw === "Other") return;
+    if (raw === "None" || raw === "N/A" || raw === "Other") return;
 
     // Split by comma since LLM returns "Product A, Product B"
     raw.split(',').forEach((p: string) => {
       const product = p.trim();
-      if (product && product !== "None") {
+      if (product && product !== "None" && product !== "N/A") {
         productCount[product] = (productCount[product] || 0) + 1;
       }
     });

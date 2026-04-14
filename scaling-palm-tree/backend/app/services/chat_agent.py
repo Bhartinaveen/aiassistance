@@ -48,34 +48,60 @@ Formulate an insightful response. Then, select the most appropriate Target Visua
 
 Return ONLY a strictly valid JSON object with keys "reply_text" and "target_visualization". Ensure the JSON is properly escaped so the Markdown inside "reply_text" does not break parsing.'''
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key={api_key}"
+    # ── Model: Gemma 3 27B (consistent with analysis engine) ────────────────
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.2,
-            "responseMimeType": "application/json"
+            "maxOutputTokens": 2048
         }
     }
     
-    try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, headers={'Content-Type': 'application/json'}, timeout=30.0)
-            if response.status_code != 200:
-                raise Exception(f"HTTP {response.status_code}: {response.text}")
-            data = response.json()
-        
-        content = data["candidates"][0]["content"]["parts"][0]["text"]
-        
-        # Extract JSON if wrapped in markdown blocks
-        json_match = re.search(r'\{.*\}', content, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group(0))
-        return json.loads(content)
-        
-    except Exception as e:
-        print(f"Chat failed: {e}. Returning simulated fallback.")
-        return {
-            "reply_text": "I can see the data reflects various customer inquiries and checkout experiences. While the API currently has ratelimit/model connection issues with Gemini 3.1 Flash Lite, our data shows most users are asking about Blue Nectar Face Cream and Vitamin C Serum, with minimal checkout friction.",
-            "target_visualization": "All"
-        }
+    import asyncio
+    max_retries = 4
+    last_error = "Unknown"
+    
+    for attempt in range(max_retries):
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers={'Content-Type': 'application/json'}, timeout=40.0)
+                if response.status_code != 200:
+                    raise Exception(f"HTTP {response.status_code}: {response.text}")
+                data = response.json()
+            
+            content = data["candidates"][0]["content"]["parts"][0]["text"]
+            
+            # Extract JSON if wrapped in markdown blocks
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(0))
+            return json.loads(content)
+            
+        except Exception as e:
+            last_error = str(e)
+            print(f"   ⚠️  Chat API Attempt {attempt+1}/{max_retries} failed: {last_error[:120]}")
+            
+            if "404" in last_error:
+                print(f"   ❌ 404 — Model not found. Falling back immediately.")
+                break
+                
+            if attempt < max_retries - 1:
+                if "429" in last_error or "503" in last_error or "quota" in last_error.lower():
+                    wait = 5 + (attempt * 5)
+                    print(f"   ⏳ High Demand (503) or Rate-limited (429). Waiting {wait}s before retry...")
+                    await asyncio.sleep(wait)
+                else:
+                    wait = 2 ** attempt + 3
+                    print(f"   ⏳ Retrying in {wait}s...")
+                    await asyncio.sleep(wait)
+                continue
+                
+            print(f"   ❌ Chat failed after {max_retries} attempts.")
+            break
+
+    return {
+        "reply_text": "I can see the data reflects various customer inquiries and checkout experiences. While the API currently has ratelimit/model connection issues with Gemini 3.1 Flash Lite, our data shows most users are asking about Blue Nectar Face Cream and Vitamin C Serum, with minimal checkout friction.",
+        "target_visualization": "All"
+    }

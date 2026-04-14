@@ -47,18 +47,18 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
 
   return (
     <>
-      <div className="w-full glass-card rounded-[2.5rem] p-8 overflow-hidden animate-entry mt-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-white/5 pb-5">
+      <div className="w-full glass-premium rounded-[3rem] p-10 overflow-hidden animate-entry mt-12 border border-white/5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 border-b border-white/10 pb-8">
         <div>
-          <h3 className="text-white font-black text-sm uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-3">
-             <AlertTriangle size={18} className="text-primary shrink-0" />
-             All Conversations Tracker
+          <h3 className="text-white font-black text-lg uppercase tracking-[0.4em] flex items-center gap-4">
+             <div className="w-2 h-6 bg-primary rounded-full" />
+             Conversation Tracker
           </h3>
-          <p className="text-xs text-white/40 mt-2 font-medium">Click on any conversation row to view deep analysis and message logs.</p>
+          <p className="text-[11px] text-white/30 mt-3 font-bold uppercase tracking-widest">Select a session for a detailed behavioral review</p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
-          <div className="relative w-full sm:w-auto">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto overflow-hidden rounded-2xl">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" />
             <input 
               type="text" 
               placeholder="SEARCH BY ID..." 
@@ -67,95 +67,104 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all w-full sm:w-48"
+              className="bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-xs font-mono text-white placeholder-white/20 focus:outline-none focus:border-primary/50 focus:bg-white/[0.08] transition-all w-full sm:w-64"
             />
           </div>
           {searchQuery && searchQuery.length > 5 && (
             <button 
               onClick={handleAnalyzeOnDemand}
               disabled={isAnalyzing}
-              className="px-4 py-1.5 rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-black hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] text-[10px] font-black uppercase tracking-wider whitespace-nowrap self-start sm:self-auto transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 rounded-2xl bg-primary text-white hover:bg-accent glow-primary text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap self-start sm:self-auto transition-all disabled:opacity-20 flex items-center gap-2"
             >
-              {isAnalyzing ? "Analyzing..." : "Analyze ID"}
+              {isAnalyzing ? <><span className="w-2 h-2 rounded-full border border-white border-t-transparent animate-spin" /> Analyzing</> : "Analyze Session"}
             </button>
           )}
-          <div className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider whitespace-nowrap self-start sm:self-auto">
-            {filteredData.length} Conversations
+          <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
+            <span className="text-primary mr-2">{filteredData.length}</span> Sessions Found
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredData.slice((currentPage - 1) * 10, currentPage * 10).map((item, idx) => {
-          const brand = item.widget_id === "680a0a8b70a26f7a0e24eedd" ? "Blue Nectar" : (item.widget_id || "Unknown");
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {filteredData.slice((currentPage - 1) * 12, currentPage * 12).map((item, idx) => {
+          const brand = item.widget_id === "680a0a8b70a26f7a0e24eedd" ? "Blue Nectar" : (item.widget_id || "Unknown Source");
           
           return (
             <div 
               key={idx} 
               onClick={() => setSelectedConv(item)}
-              className="p-5 rounded-[1.5rem] border border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-primary/30 cursor-pointer transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.1)] group flex flex-col gap-3"
+              className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-primary/40 cursor-pointer transition-all hover:shadow-[0_0_30px_rgba(139,92,246,0.1)] group flex flex-col gap-5 animate-in fade-in"
+              style={{ animationDelay: `${idx * 0.05}s` }}
             >
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-black tracking-widest flex items-center gap-1.5">
-                  <Cpu size={12} className="text-primary/70" /> {brand}
-                </span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-end">
+                  {item.evaluation?.Hallucination_Detected && (
+                    <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-[8px] font-black uppercase">Conflict</span>
+                  )}
+                </div>
                 
-                <div className="flex items-center justify-between">
-                  <span 
-                    className="text-xs font-mono font-bold text-white/80 group-hover:text-primary transition-colors truncate w-full" 
-                    title={`Conversation ID: ${item.conversation_id}`}
-                  >
-                    {item.conversation_id}
-                  </span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.clipboard.writeText(item.conversation_id);
-                      const icon = e.currentTarget.querySelector('svg');
-                      if(icon) {
-                        icon.style.color = '#34d399';
-                        setTimeout(() => icon.style.color = '', 1500);
-                      }
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/10 shrink-0 ml-2"
-                    title="Copy Conversation ID"
-                  >
-                    <Copy size={12} />
-                  </button>
+                <div className="flex flex-col gap-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <span 
+                      className="text-[10px] font-mono font-bold text-white/80 group-hover:text-primary transition-colors truncate w-full" 
+                      title={`Conversation ID: ${item.conversation_id}`}
+                    >
+                      <span className="text-primary/60 mr-1">CID:</span>{item.conversation_id}
+                    </span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(item.conversation_id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-white/20 hover:text-primary rounded-xl hover:bg-white/5 shrink-0 ml-2"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                  
+                  {item.widget_id && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-medium text-white/30 truncate w-full" title={`Widget ID: ${item.widget_id}`}>
+                        <span className="text-white/10 mr-1">WID:</span>{item.widget_id}
+                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(item.widget_id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-white/10 hover:text-primary rounded-xl hover:bg-white/5 shrink-0 ml-2"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {item.widget_id && item.widget_id !== "Unknown" && (
-                <div className="mt-auto pt-3 border-t border-white/5 flex items-center">
-                  <span className="text-[9px] font-mono text-white/20 truncate" title={`Widget ID: ${item.widget_id}`}>
-                    WID: {item.widget_id}
-                  </span>
-                </div>
-              )}
             </div>
           )
         })}
       </div>
 
-      {filteredData.length > 10 && (
-        <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
-          <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">
-            Showing {(currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, filteredData.length)} of {filteredData.length}
+      {filteredData.length > 12 && (
+        <div className="mt-10 flex items-center justify-between border-t border-white/10 pt-8">
+          <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-black">
+            Node {(currentPage - 1) * 12 + 1} TO {Math.min(currentPage * 12, filteredData.length)} OF {filteredData.length}
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white/50 uppercase tracking-[0.2em] disabled:opacity-10 disabled:grayscale transition-all border border-white/5"
             >
-              Previous
+              Previous Range
             </button>
             <button 
-              onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredData.length / 10), p + 1))}
-              disabled={currentPage === Math.ceil(filteredData.length / 10)}
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredData.length / 12), p + 1))}
+              disabled={currentPage === Math.ceil(filteredData.length / 12)}
+              className="px-6 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white/50 uppercase tracking-[0.2em] disabled:opacity-10 disabled:grayscale transition-all border border-white/5"
             >
-              Next
+              Next Range
             </button>
           </div>
         </div>

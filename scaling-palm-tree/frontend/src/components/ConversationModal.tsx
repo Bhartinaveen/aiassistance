@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { X, MessageSquare, AlertTriangle, Zap, User, Bot, AlertCircle, CheckCircle2, Star, ThumbsUp, ShieldCheck } from 'lucide-react';
+import { X, MessageSquare, AlertTriangle, Zap, User, Bot, AlertCircle, CheckCircle2, Star, ThumbsUp, ShieldCheck, Cpu } from 'lucide-react';
 
 interface ConversationModalProps {
   convId: string;
@@ -38,226 +38,166 @@ export default function ConversationModal({ convId, report, onClose }: Conversat
     !hasHallucination && !hasFriction && !hasUserProblem && !hasAgentProblem && !report?.loop_detected
   );
 
-  const clientFriendlyCause = ev.Primary_Issue_Tag || "Awaiting Tag";
+  let clientFriendlyCause = ev.Root_Cause && ev.Root_Cause !== 'None' ? ev.Root_Cause : "Flow Issue Detected";
+  const rcLower = clientFriendlyCause.toLowerCase();
+  
+  if (report?.dropoff) {
+     clientFriendlyCause = "User Dropoff / Frustration";
+  } else if (hasFriction) {
+     clientFriendlyCause = "Checkout Friction Detected";
+  } else if (report?.loop_detected) {
+     clientFriendlyCause = "Poorly Handled Question";
+  } else if (rcLower.includes("product") || rcLower.includes("irrelevant")) {
+     clientFriendlyCause = "Irrelevant Product Suggested";
+  } else if (rcLower.includes("policy") || rcLower.includes("brand")) {
+     clientFriendlyCause = "Brand Policy Violation";
+  } else if (rcLower.includes("agent") || rcLower.includes("ai")) {
+     clientFriendlyCause = "AI Handling Error";
+  } else if (hasHallucination) {
+     clientFriendlyCause = "AI Hallucination / False Info";
+  }
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-entry">
-      <div className="w-full max-w-5xl h-[85vh] bg-[#0A0A0C] border border-white/10 rounded-[2rem] flex flex-col md:flex-row overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-md animate-entry">
+      <div className="w-full max-w-6xl h-[90vh] glass-premium rounded-[3rem] flex flex-col md:flex-row overflow-hidden shadow-[0_32px_128px_-15px_rgba(0,0,0,1)] border border-white/10">
         
-        {/* Left Panel: Dynamically shows "Why Satisfied" OR "Issue Analysis" */}
-        <div className={`w-full md:w-1/3 md:h-full flex-none max-h-[50vh] md:max-h-full border-b md:border-b-0 md:border-r border-white/5 p-4 sm:p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4 ${isSatisfied ? 'bg-emerald-950/20' : 'bg-white/[0.02]'}`}>
+        {/* Left Panel: Neural Analysis Engine */}
+        <div className={`w-full md:w-[380px] md:h-full flex-none max-h-[50vh] md:max-h-full border-b md:border-b-0 md:border-r border-white/10 p-8 overflow-y-auto custom-scrollbar flex flex-col gap-6 ${isSatisfied ? 'bg-emerald-500/5' : 'bg-white/[0.01]'}`}>
           <div className="flex justify-between items-center z-10 shrink-0">
-            <h3 className={`font-black uppercase tracking-widest text-sm flex items-center gap-2 ${isSatisfied ? 'text-emerald-400' : 'text-white'}`}>
-              {isSatisfied
-                ? <><CheckCircle2 size={16} className="text-emerald-400" /> Why Satisfied</>
-                : <><AlertCircle size={16} className="text-primary" /> Issue Analysis</>
-              }
-            </h3>
+            <div className="flex flex-col gap-1">
+              <h3 className={`font-black uppercase tracking-[0.3em] text-[11px] flex items-center gap-2 ${isSatisfied ? 'text-emerald-400' : 'text-primary'}`}>
+                {isSatisfied
+                  ? <><ShieldCheck size={16} className="text-emerald-400" /> Outcome Review</>
+                  : <><Zap size={16} className="text-primary" /> Chat Analytics</>
+                }
+              </h3>
+            </div>
             <button onClick={onClose} className="md:hidden p-2 -mr-2 text-white/50 hover:text-white rounded-full hover:bg-white/5">
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
-          {isSatisfied ? (
-            /* ─── SATISFIED VIEW ─────────────────────────────────── */
-            <div className="space-y-4 shrink-0 pb-4">
-
-              {/* Score Hero Badge */}
-              <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Star size={18} className="text-emerald-400 fill-emerald-400" />
-                  <span className="text-3xl font-black text-emerald-400">{scoreValue}/10</span>
-                  <Star size={18} className="text-emerald-400 fill-emerald-400" />
+          <div className="space-y-6 shrink-0 pb-6">
+            {/* Score Visualization */}
+            <div className={`p-6 rounded-[2rem] border text-center relative overflow-hidden group ${isSatisfied ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-primary/5 border-primary/20'}`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <span className={`text-4xl font-black ${isSatisfied ? 'text-emerald-400' : 'text-primary'}`}>{scoreValue}/10</span>
                 </div>
-                <p className="text-[10px] text-emerald-500/80 uppercase tracking-widest font-black">User Satisfaction Score</p>
+                <div className="flex justify-center gap-1 mb-2">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} size={10} className={`${i <= (scoreValue || 0)/2 ? (isSatisfied ? 'text-emerald-400 fill-emerald-400' : 'text-primary fill-primary') : 'text-white/10'}`} />
+                  ))}
+                </div>
+                <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-black">User Satisfaction</p>
+              </div>
+            </div>
+
+            {/* Core Insight Area */}
+            <div className="space-y-4">
+              <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Cpu size={14} className="text-primary" />
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Session Summary</p>
+                </div>
+                <p className="text-xs text-white/90 leading-relaxed font-medium">
+                  {ev.Summary_Insights || "Awaiting neural synthesis..."}
+                </p>
               </div>
 
-              {/* Why It Worked — Summary */}
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-emerald-500/10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ThumbsUp size={14} className="text-emerald-400" />
-                  <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Why This Conversation Worked</p>
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed">{ev.Summary_Insights || "The conversation went smoothly with no detected issues."}</p>
-              </div>
-
-              {/* Positive Signals */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Positive Signals Detected</p>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
-                    <span className="text-[11px] text-white/70">No hallucination detected by AI</span>
+              {!isSatisfied && (
+                <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle size={14} className="text-red-400" />
+                    <p className="text-[10px] text-red-400 uppercase tracking-widest font-black">Issue Detail</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
-                    <span className="text-[11px] text-white/70">No checkout friction reported</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
-                    <span className="text-[11px] text-white/70">User message flow was clean</span>
-                  </div>
-                  {!report?.dropoff && (
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
-                      <span className="text-[11px] text-white/70">User did not drop off</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Context */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Conversation Context</p>
-                <div className="grid grid-cols-2 gap-y-3 gap-x-2">
-                  <div>
-                    <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Sentiment</p>
-                    <p className="text-xs text-emerald-400 font-bold">{ev.Sentiment_Shift || "Positive"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Category</p>
-                    <p className="text-xs text-white/80 font-medium">{ev.Category || "General"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Inquiry Type</p>
-                    <p className="text-xs text-white/80 font-medium">{ev.Primary_Inquiry_Type || "Other"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Product</p>
-                    <p className="text-xs text-emerald-400/80 font-bold">{ev.Product_Mentioned || "None"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* What made it great */}
-              {ev.Agent_Improvement_Rule && !['none', 'n/a'].includes(ev.Agent_Improvement_Rule?.toLowerCase()) && (
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap size={14} className="text-emerald-400" />
-                    <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Agent Behaviour to Replicate</p>
-                  </div>
-                  <p className="text-xs text-white/90 italic font-medium">{ev.Agent_Improvement_Rule}</p>
+                  <p className="text-xs text-red-200/80 font-bold">{clientFriendlyCause}</p>
                 </div>
               )}
+
+              {/* Multi-layered analysis fields */}
+              {[
+                { label: "AI Performance", value: ev.Agent_Message_Problem, color: "text-primary", icon: Bot },
+                { label: "Customer Experience", value: ev.User_Message_Problem, color: "text-blue-400", icon: User },
+                { label: "Suggested Fix", value: ev.Agent_Improvement_Rule, color: "text-emerald-400", icon: Zap, highlight: true },
+              ].map((field, i) => (
+                <div key={i} className={`p-5 rounded-2xl border ${field.highlight ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/[0.02] border-white/5'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <field.icon size={13} className={field.color} />
+                    <p className={`text-[9px] uppercase tracking-widest font-black ${field.color}`}>{field.label}</p>
+                  </div>
+                  <p className={`text-[11px] leading-relaxed ${!field.value || field.value.toLowerCase().includes('none') ? 'text-white/20 italic' : 'text-white/80 font-medium'}`}>
+                    {(!field.value || field.value.toLowerCase().includes('none')) ? "No anomalies detected" : field.value}
+                  </p>
+                </div>
+              ))}
             </div>
 
-          ) : (
-            /* ─── ISSUE VIEW (unchanged behaviour) ──────────────── */
-            <div className="space-y-4 shrink-0 pb-4">
-              {/* Conversation Context Block */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Conversation Context</p>
-                <div className="grid grid-cols-2 gap-y-3 gap-x-2">
-                  <div>
-                     <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Brand</p>
-                     <p className="text-xs text-white/80 font-medium truncate">
-                       {report?.widget_id === "680a0a8b70a26f7a0e24eedd" ? "Blue Nectar" : (report?.widget_id || "Unknown")}
-                     </p>
-                     {report?.widget_id && report.widget_id !== "Unknown" && (
-                       <p className="text-[9px] font-mono text-white/30 truncate mt-0.5" title={report.widget_id}>
-                         WID: {report.widget_id}
-                       </p>
-                     )}
+            {/* Metadata Matrix */}
+            <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
+              <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-black mb-4">Session Details</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { l: "Category", v: ev.Category || "General" },
+                  { l: "Sentiment", v: ev.Sentiment_Shift || "Neutral", c: "text-blue-400" },
+                  { l: "Product", v: ev.Product_Mentioned || "None", c: "text-emerald-400" },
+                  { l: "Inquiry", v: ev.Primary_Inquiry_Type || "Unclassified" },
+                ].map((meta, i) => (
+                  <div key={i}>
+                    <p className="text-[8px] text-white/20 uppercase font-black tracking-widest mb-1">{meta.l}</p>
+                    <p className={`text-[10px] font-bold truncate ${meta.c || 'text-white/70'}`}>{meta.v}</p>
                   </div>
-                  <div>
-                     <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Category</p>
-                     <p className="text-xs text-white/80 font-medium truncate">{ev.Category || "General"}</p>
-                  </div>
-                  <div>
-                     <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Inquiry Type</p>
-                     <p className="text-xs text-white/80 font-medium truncate">{ev.Primary_Inquiry_Type || "Other"}</p>
-                  </div>
-                  <div>
-                     <p className="text-[8px] text-white/30 uppercase font-black tracking-widest mb-0.5">Product</p>
-                     <p className="text-xs text-primary/80 font-bold truncate">{ev.Product_Mentioned || "None"}</p>
-                  </div>
-                </div>
+                ))}
               </div>
-              <div className="p-4 rounded-2xl glass-card border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Issue Overview</p>
-                <p className="text-sm text-white/90 font-medium">{ev.Summary_Insights || "Issue detected in conversation flow."}</p>
-                
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
-                    Score: {ev.User_Satisfaction_Score}/10
-                  </span>
-                  <span className="px-2 py-1 text-[9px] font-bold uppercase rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                    {clientFriendlyCause.length > 35 ? clientFriendlyCause.substring(0, 35) + '...' : clientFriendlyCause}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                  <User size={14} className="text-blue-400" />
-                  <p className="text-[10px] text-blue-400 uppercase tracking-wider font-bold">User Problem</p>
-                </div>
-                <p className={`text-xs ${(!ev.User_Message_Problem) ? 'text-white/20 italic' : 'text-white/80'}`}>
-                  {ev.User_Message_Problem || "Awaiting analysis..."}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot size={14} className="text-purple-400" />
-                  <p className="text-[10px] text-purple-400 uppercase tracking-wider font-bold">Agent Problem</p>
-                </div>
-                <p className={`text-xs ${(!ev.Agent_Message_Problem) ? 'text-white/20 italic' : 'text-white/80'}`}>
-                   {ev.Agent_Message_Problem || "Awaiting analysis..."}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap size={14} className="text-primary" />
-                  <p className="text-[10px] text-primary uppercase tracking-wider font-bold">Improvement Rule (Fix)</p>
-                </div>
-                <p className={`text-xs font-medium ${(!ev.Agent_Improvement_Rule) ? 'text-white/40 italic' : 'text-white/90'}`}>
-                  {ev.Agent_Improvement_Rule || "Awaiting analysis..."}
-                </p>
-              </div>
-
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Right Panel: Chat Log */}
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col relative h-full bg-[#050505]">
-          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0A0A0C] z-10 hidden md:flex">
-             <div className="flex items-center gap-2">
-                <MessageSquare size={16} className="text-white/40" />
-                <span className="text-xs font-mono font-bold text-white/40 uppercase">ID: {convId}</span>
+        {/* Right Panel: Intelligence Stream (Chat Log) */}
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col relative h-full bg-[#030305]">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#050508] z-10 hidden md:flex">
+             <div className="flex items-center gap-4">
+                <span className="text-xs font-mono font-bold text-white/20 uppercase tracking-[0.2em] underline decoration-white/5 underline-offset-4">CONV_ID: {convId}</span>
              </div>
-             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-               <X size={16} className="text-white/60" />
+             <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-all group">
+               <X size={20} className="text-white/30 group-hover:text-white group-hover:rotate-90 transition-all" />
              </button>
           </div>
           
-          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_top_right,_#ffffff02,_transparent)]">
             {loading ? (
-              <div className="h-full flex flex-col items-center justify-center animate-pulse gap-3 text-white/30">
-                <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-                <p className="text-xs font-bold uppercase tracking-widest">Loading Logs</p>
+              <div className="h-full flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-full border-2 border-primary/10 border-t-primary animate-spin shadow-[0_0_20px_rgba(139,92,246,0.3)]" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">Loading Transcript</p>
               </div>
             ) : messages.length > 0 ? (
               messages.map((msg, idx) => {
                 const isUser = msg.sender === 'user';
                 return (
-                  <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-                    <div className={`max-w-[85%] sm:max-w-[80%] p-3 rounded-2xl ${
+                  <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`} style={{ animationDelay: `${idx * 0.03}s` }}>
+                    <div className={`max-w-[85%] sm:max-w-[75%] p-5 rounded-[2rem] shadow-2xl relative ${
                       msg.messageType === 'event' 
-                        ? 'bg-transparent border border-white/10 text-white/40 text-[10px] w-full text-center uppercase tracking-widest' 
+                        ? 'bg-transparent border border-white/10 text-white/30 text-[9px] w-full text-center uppercase tracking-[0.3em] py-2 rounded-xl my-4' 
                         : isUser 
-                          ? 'bg-primary/20 text-white rounded-tr-sm border border-primary/20' 
-                          : 'bg-white/5 text-white/90 rounded-tl-sm border border-white/10'
+                          ? 'bg-white/[0.08] text-white rounded-tr-none border border-white/10' 
+                          : 'bg-primary/10 text-white/90 rounded-tl-none border border-primary/20 backdrop-blur-md'
                     }`}>
                       {msg.messageType === 'event' ? (
-                        <span>✨ Event: {msg.metadata?.eventType || 'System Event'}</span>
+                        <span><Cpu size={10} className="inline mr-2 opacity-50" /> SYSTEM EVENT: {msg.metadata?.eventType || 'PROCESS'}</span>
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.text?.split("End of stream")[0]}</p>
+                        <div className="flex flex-col gap-2">
+                          <div className={`flex items-center gap-2 mb-1 opacity-40 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {isUser ? <User size={10} /> : <Bot size={10} />}
+                            <span className="text-[8px] font-black uppercase tracking-widest">{isUser ? 'Customer' : 'AI Assistant'}</span>
+                          </div>
+                          <p className="text-[13px] sm:text-sm whitespace-pre-wrap break-words leading-relaxed font-medium">
+                            {msg.text?.split("End of stream")[0]}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>

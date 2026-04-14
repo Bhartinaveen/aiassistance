@@ -13,7 +13,8 @@ async def analyze_transcript(transcript: str) -> dict:
     Captures conversation context (Beginning) and outcomes (End) for token efficiency.
     """
     if not api_key:
-        return _generate_mock_data(transcript, "Mock Mode: API Key missing")
+        print("   ❌ API Key missing. Skipping analysis.")
+        return None
         
     # 📡 TOKEN OPTIMIZATION: Contextual Truncation (Start + End)
     if len(transcript) > 3510:
@@ -48,7 +49,6 @@ Return ONLY a JSON object with strictly these keys:
 "Sentiment_Shift": (Emotional trend),
 "Bottleneck": (Technical/Process failure point),
 "Root_Cause": (Original source of error),
-"Primary_Issue_Tag": (Generate a dynamic 2-4 word business-friendly tag for the most crucial outcome of the chat, e.g. 'Checkout Friction', 'AI Hallucination', 'User Dropoff', 'Flawless Interaction'),
 "Summary_Insights": (1-sentence issue overview in clear, easy-to-understand language. Use technical words only when required),
 "Accuracy_Score": (1-10),
 "Retention_Score": (1-10),
@@ -57,13 +57,13 @@ Return ONLY a JSON object with strictly these keys:
 "Primary_Inquiry_Type": (Type),
 "Product_Mentioned": (Product or "None")'''
 
-    # Reverting back to a stable known model endpoint as 'gemini-1.5-flash' caused a 404
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key={api_key}"
+    # ── Model: Gemma 3 27B (instruction-tuned) via Gemini API ────────────────
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 1024
+            "maxOutputTokens": 1536
         }
     }
     
@@ -98,7 +98,24 @@ Return ONLY a JSON object with strictly these keys:
                 if result.get(key) is None:
                     result[key] = "None"
 
-            print(f"   ✅ Gemini responded successfully (attempt {attempt+1})")
+            # ── Normalize boolean fields ────────────────────────────────────
+            # Gemma sometimes returns "true"/"false"/"yes"/"no" as strings.
+            # We convert them all to proper Python booleans so the frontend
+            # can reliably check `=== true` without string juggling.
+            for bool_key in ["Hallucination_Detected", "Checkout_Friction_Detected"]:
+                raw_val = result.get(bool_key)
+                if isinstance(raw_val, bool):
+                    pass  # already correct
+                elif isinstance(raw_val, str):
+                    result[bool_key] = raw_val.strip().lower() in ("true", "yes", "1")
+                elif isinstance(raw_val, int):
+                    result[bool_key] = bool(raw_val)
+                else:
+                    result[bool_key] = False
+            # ───────────────────────────────────────────────────────────────
+
+            print(f"   ✅ Gemma 3 27B responded successfully (attempt {attempt+1})")
+            print(f"   🔍 Hallucination_Detected = {result.get('Hallucination_Detected')} | Checkout_Friction = {result.get('Checkout_Friction_Detected')}")
             return result
             
         except Exception as e:
@@ -119,55 +136,7 @@ Return ONLY a JSON object with strictly these keys:
                     await asyncio.sleep(wait)
                 continue
 
-            print(f"   ❌ Analysis failed after {max_retries} attempts. Using mock fallback.")
+            print(f"   ❌ Analysis failed after {max_retries} attempts.")
             break
             
-    return _generate_mock_data(transcript, f"Fallback Error: {last_error[:50]}")
-
-def _generate_mock_data(transcript: str, reason: str) -> dict:
-    # Simulated Data Generator for fallback and robustness
-    hashed = int(hashlib.md5(transcript.encode()).hexdigest(), 16)
-    
-    categories = ["Luxury", "Healthcare", "Electronics", "Fashion", "General"]
-    intents = ["Product Inquiry", "Checkout Issue", "Shipping Q", "Return Policy", "Order Status"]
-    products = ["Blue Nectar Face Cream", "Vitamin C Serum", "Kumkumadi Tailam", "Ayurvedic Hair Oil", "None"]
-    root_causes = ["Admin Data Error", "Agent Logic Error", "User Frustration", "Agent Logic Error"]
-    hallucination_reasons = [
-        "Agent suggested a price for a product that is currently not in the catalog.",
-        "Agent promised a 2-day delivery which contradicts the standard 5-day shipping policy.",
-        "Agent claimed the product contains ingredients not listed in the official manifest.",
-        "Agent offered a discount code that does not exist in the active promotions list."
-    ]
-    
-    friction_scenarios = [
-        {"friction": "Payment Gateway Timeout", "rule": "AI should proactively offer to send a manual payment link."},
-        {"friction": "Discount Code 'SAVE20' Rejected", "rule": "AI must verify active promotions before suggesting codes."},
-        {"friction": "Address Validation Loop", "rule": "AI should detect repeated address failures and suggest guest checkout."},
-        {"friction": "Cart Item Availability Mismatch", "rule": "AI needs real-time stock sync before confirming checkout steps."},
-        {"friction": "Credit Card Type Not Supported", "rule": "AI should list supported payment methods early in the flow."}
-    ]
-    
-    scenario = friction_scenarios[hashed % len(friction_scenarios)]
-    
-    return {
-        "Category": categories[hashed % len(categories)],
-        "User_Satisfaction_Score": (hashed % 6) + 4, # Scores between 4-10
-        "Hallucination_Detected": bool(hashed % 6 == 0),
-        "Hallucination_Reason": hallucination_reasons[hashed % len(hallucination_reasons)] if bool(hashed % 6 == 0) else "None",
-        "Checkout_Friction_Detected": bool(hashed % 3 == 0),
-        "User_Frustration_Point": scenario["friction"] if bool(hashed % 3 == 0) else "None",
-        "Agent_Improvement_Rule": scenario["rule"] if bool(hashed % 3 == 0) else "None",
-        "Agent_Message_Problem": "Failed to offer relevant alternative" if bool(hashed % 3 == 0) else "None",
-        "User_Message_Problem": "Stuck at payment screen" if bool(hashed % 3 == 0) else "User clearly provided order details and navigated smoothly.",
-        "Sentiment_Shift": "Neutral to Positive" if hashed % 3 == 0 else "Neutral to Frustrated",
-        "Bottleneck": intents[hashed % len(intents)] + " queries",
-        "Root_Cause": root_causes[hashed % len(root_causes)],
-        "Primary_Issue_Tag": "Checkout Friction" if bool(hashed % 3 == 0) else "Flawless Interaction",
-        "Summary_Insights": "Simulated fallback summary for " + scenario["friction"],
-        "Primary_Inquiry_Type": intents[hashed % len(intents)],
-        "Product_Mentioned": products[hashed % len(products)],
-        "Accuracy_Score": (hashed % 5) + 5,      # 5-10
-        "Retention_Score": (hashed % 7) + 3,     # 3-10
-        "Compliance_Score": (hashed % 6) + 4,    # 4-10
-        "Engagement_Score": (hashed % 5) + 6,    # 6-10
-    }
+    return None
