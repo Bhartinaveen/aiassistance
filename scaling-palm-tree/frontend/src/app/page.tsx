@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, Zap, ShoppingBag, TrendingUp, Cpu, Info } from "lucide-react";
+import { Activity, AlertTriangle, Zap, ShoppingBag, TrendingUp, Cpu, Info, ArrowRight, BarChart3, Brain, Shield, Sparkles } from "lucide-react";
 
 import InquiryIntentChart from '@/components/InquiryIntentChart';
 import ProductInterestCloud from '@/components/ProductInterestCloud';
@@ -11,9 +11,17 @@ import ProblemConversationsList from '@/components/ProblemConversationsList';
 import { getApiUrl } from '@/config';
 
 export default function Home() {
+  // ── Landing Page State ─────────────────────────────────────────────────────
+  // showLanding controls whether the hero landing page is visible.
+  // The dashboard only loads AFTER the user clicks "Launch Dashboard",
+  // preventing ugly backend connection errors on first visit.
+  const [showLanding, setShowLanding] = useState(true);
+  const [landingFadeOut, setLandingFadeOut] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const [allData, setAllData] = useState<any[]>([]);
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("All Brands");
   const [limitInput, setLimitInput] = useState<number | string>("");
   // isClearing tracks when the user triggered a Force Re-scan (cache wipe)
@@ -26,6 +34,35 @@ export default function Home() {
   // backendStatus: null = unknown, 'connecting' = retrying, 'online' = ok, 'offline' = unreachable
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'online' | 'offline' | null>(null);
   const [retryCountdown, setRetryCountdown] = useState<number>(0);
+
+  // ── Enter Dashboard Handler ────────────────────────────────────────────────
+  const enterDashboard = async () => {
+    setIsConnecting(true);
+    const apiUrl = getApiUrl();
+    
+    // Check backend health BEFORE transitioning
+    try {
+      setBackendStatus('connecting');
+      // Wider timeout for entry to handle cold-starts
+      const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(12000) });
+      if (res.ok) {
+        setBackendStatus('online');
+        setLandingFadeOut(true);
+        setTimeout(() => {
+          setShowLanding(false);
+          setIsConnecting(false);
+        }, 600);
+      } else {
+        setBackendStatus('offline');
+        setIsConnecting(false);
+      }
+    } catch {
+      // If it fails immediately, try one more time before giving up on the landing page
+      setBackendStatus('offline');
+      setIsConnecting(false);
+      // We don't transition; the user stays on landing and can try again or see the status
+    }
+  };
 
   // 💡 TO ANALYZE CUSTOM DATA LIMITS: This function grabs the user's preference and feeds it to the Backend
   // Includes automatic retry with exponential backoff for when the backend is starting up.
@@ -135,24 +172,6 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // On mount: only check backend health — do NOT auto-trigger analysis
-    const checkBackend = async () => {
-      const apiUrl = getApiUrl();
-      try {
-        setBackendStatus('connecting');
-        const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(5000) });
-        setBackendStatus(res.ok ? 'online' : 'offline');
-      } catch {
-        setBackendStatus('offline');
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkBackend();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (selectedBrand === "All Brands") {
       setData(allData);
     } else {
@@ -178,10 +197,132 @@ export default function Home() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       </div>
 
+      {/* ══════════════════════════════════════════════════════════════════════════
+          ██  LANDING PAGE — HERO SECTION
+          ══════════════════════════════════════════════════════════════════════════
+          Shows a stunning intro page on first visit. No backend connection needed.
+          This prevents the "Backend Unreachable" error on Vercel deployments when
+          the Render backend is cold-starting.
+          ══════════════════════════════════════════════════════════════════════════ */}
+      {showLanding && (
+        <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-700 ${landingFadeOut ? 'opacity-0 scale-105' : 'opacity-100 scale-100'}`}>
+          {/* Background for landing */}
+          <div className="absolute inset-0 bg-[#05050a]" />
+          
+          {/* Animated aurora orbs */}
+          <div className="absolute top-[-20%] left-[10%] w-[60%] h-[60%] rounded-full bg-violet-600/15 blur-[180px] animate-mesh" />
+          <div className="absolute bottom-[-20%] right-[5%] w-[50%] h-[50%] rounded-full bg-blue-600/10 blur-[160px] animate-mesh" style={{ animationDelay: '-5s' }} />
+          <div className="absolute top-[30%] right-[15%] w-[35%] h-[35%] rounded-full bg-fuchsia-500/8 blur-[140px] animate-mesh" style={{ animationDelay: '-8s' }} />
+          
+          {/* Grid texture */}
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+
+          {/* ── Hero Content ── */}
+          <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto animate-entry">
+            {/* Logo / Icon */}
+            <div className="relative mb-8">
+              <div className="absolute inset-0 w-28 h-28 rounded-[2.5rem] bg-primary/20 blur-[40px] animate-pulse" />
+              <div className="relative p-7 rounded-[2.5rem] glass-premium border border-primary/30 glow-primary">
+                <Cpu className="text-primary" size={42} />
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="mb-4">
+              <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white mb-1">
+                AI CHAT
+              </h1>
+              <div className="flex items-center justify-center gap-4">
+                <div className="h-px w-16 bg-gradient-to-r from-transparent to-primary/50" />
+                <span className="text-primary font-black text-sm md:text-base tracking-[0.5em] uppercase">Analytics</span>
+                <div className="h-px w-16 bg-gradient-to-l from-transparent to-primary/50" />
+              </div>
+            </div>
+
+            {/* Subtitle */}
+            <p className="text-white/40 text-sm md:text-base max-w-lg leading-relaxed mb-3">
+              AI-powered support quality intelligence platform. Analyze customer conversations, 
+              detect friction points, and uncover actionable insights in real-time.
+            </p>
+
+
+            {/* CTA Button */}
+            <button
+              onClick={enterDashboard}
+              disabled={isConnecting}
+              className="group relative px-10 py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-[0.25em] hover:scale-105 active:scale-[0.98] transition-all duration-300 glow-primary mb-6 disabled:opacity-70 disabled:hover:scale-100"
+            >
+              <span className="flex items-center gap-3">
+                {isConnecting ? (
+                  <><span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></span> Waking up AI...</>
+                ) : (
+                  <>
+                    Launch Dashboard
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-300" />
+                  </>
+                )}
+              </span>
+              {/* Button glow */}
+              {!isConnecting && <div className="absolute inset-0 rounded-2xl bg-primary/40 blur-xl -z-10 group-hover:blur-2xl transition-all duration-500" />}
+            </button>
+
+            {/* Connection Status Message */}
+            {backendStatus === 'offline' && !isConnecting && (
+              <p className="text-red-400/60 text-[10px] font-black uppercase tracking-[0.2em] mb-10 animate-pulse">
+                Backend is cold-starting... please try again in a few seconds
+              </p>
+            )}
+
+            {!isConnecting && backendStatus !== 'offline' && (
+              <div className="h-10 mb-6"></div>
+            )}
+
+            {/* Feature Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-3xl">
+              {[
+                { icon: BarChart3, title: "Deep Analytics", desc: "Multi-dimensional conversation analysis with visual dashboards", color: "text-blue-400", border: "border-blue-500/10", bg: "bg-blue-500/5" },
+                { icon: Brain, title: "AI Insights", desc: "Gemma 3 27B powered behavioral pattern recognition", color: "text-violet-400", border: "border-violet-500/10", bg: "bg-violet-500/5" },
+                { icon: Shield, title: "Quality Audit", desc: "Automated hallucination detection and compliance scoring", color: "text-emerald-400", border: "border-emerald-500/10", bg: "bg-emerald-500/5" },
+                { icon: Zap, title: "Real-time", desc: "Live analysis progress with smart caching for efficiency", color: "text-amber-400", border: "border-amber-500/10", bg: "bg-amber-500/5" },
+              ].map((feature, i) => (
+                <div key={i} className={`p-5 rounded-2xl glass border ${feature.border} hover:border-white/10 transition-all duration-500 group cursor-default`} style={{ animationDelay: `${0.3 + i * 0.1}s` }}>
+                  <feature.icon size={18} className={`${feature.color} mb-3 group-hover:scale-110 transition-transform duration-300`} />
+                  <p className="text-white/80 text-xs font-bold mb-1">{feature.title}</p>
+                  <p className="text-white/30 text-[10px] leading-relaxed">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom attribution */}
+          <div className="absolute bottom-8 text-center">
+            <p className="text-[9px] text-white/15 font-mono font-bold uppercase tracking-[0.3em]">
+              © {new Date().getFullYear()} NVN..B Research Labs · Intelligence Mode: <span className="text-primary/40">NVN-LITE</span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          ██  DASHBOARD (shown after clicking "Launch Dashboard")
+          ══════════════════════════════════════════════════════════════════════════ */}
+      {!showLanding && (
+        <>
+
       <div className="max-w-[1700px] mx-auto px-6 lg:px-10 py-10">
         {/* ── Modern Navigation / Header ── */}
         <nav className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16 animate-entry">
           <div className="flex items-center gap-5">
+            <button 
+              onClick={() => {
+                setLandingFadeOut(false);
+                setShowLanding(true);
+              }}
+              title="Return to Landing Page"
+              className="p-3 rounded-2xl glass border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
+            >
+              <ArrowRight size={20} className="text-white/40 group-hover:text-primary transition-colors rotate-180" />
+            </button>
             <div className="p-4 rounded-3xl glass-premium border border-primary/30 glow-primary">
               <Cpu className="text-primary-foreground" size={28} />
             </div>
@@ -382,19 +523,6 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mt-4">
-              {[
-                { icon: Zap, title: "Smart Caching", desc: "Re-scanning higher numbers only sends new conversations to the AI — saving tokens." },
-                { icon: Activity, title: "Real-time Progress", desc: "Watch the analysis run live with per-conversation progress tracking." },
-                { icon: AlertTriangle, title: "Quality Insights", desc: "Instantly see satisfaction scores, hallucination rates, and customer pain points." },
-              ].map((tip, i) => (
-                <div key={i} className="p-5 rounded-2xl glass border border-white/5 flex flex-col gap-2">
-                  <tip.icon size={16} className="text-primary/60" />
-                  <p className="text-white/70 text-xs font-bold">{tip.title}</p>
-                  <p className="text-white/30 text-[11px] leading-relaxed">{tip.desc}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
         ) : (
@@ -532,9 +660,10 @@ export default function Home() {
         )}
       </div>
 
-
-      {/* Chat Bot Interface Overlay */}
+      {/* Chat Bot Interface Overlay — only in dashboard mode */}
       <ChatInterface onVisualizationChange={() => { }} />
+      </>
+      )}
     </main>
   );
 }
