@@ -72,6 +72,14 @@ app.add_middleware(
 def read_root():
     return {"message": "Welcome to the AI QA & Analytics Engine API"}
 
+@app.get("/api/ping")
+def ping():
+    """
+    🔗 KEEP-ALIVE ENDPOINT: Used by external services like Uptime Robot
+    to prevent the Render backend from spinning down.
+    """
+    return {"status": "online", "message": "Backend is awake and ready"}
+
 @app.delete("/api/analysis/clear-cache")
 async def clear_cache_endpoint(limit: int = 20):
     """

@@ -34,34 +34,58 @@ export default function Home() {
   // backendStatus: null = unknown, 'connecting' = retrying, 'online' = ok, 'offline' = unreachable
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'online' | 'offline' | null>(null);
   const [retryCountdown, setRetryCountdown] = useState<number>(0);
+  const [connectionAttempt, setConnectionAttempt] = useState<number>(0);
+
+  // ── Proactive Wake-up ──────────────────────────────────────────────────────
+  // Pings the backend immediately on mount to start the Render wake-up process.
+  useEffect(() => {
+    const pingBackend = async () => {
+      const apiUrl = getApiUrl();
+      try {
+        // Silent ping, we don't care about the result here, just waking it up.
+        fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(5000) }).catch(() => {});
+      } catch (e) {}
+    };
+    pingBackend();
+  }, []);
 
   // ── Enter Dashboard Handler ────────────────────────────────────────────────
+  // Enhanced with automatic retry logic for cold starts.
   const enterDashboard = async () => {
     setIsConnecting(true);
     const apiUrl = getApiUrl();
+    const MAX_ENTRY_ATTEMPTS = 12; // ~60 seconds total if each takes 5s
     
-    // Check backend health BEFORE transitioning
-    try {
+    for (let attempt = 1; attempt <= MAX_ENTRY_ATTEMPTS; attempt++) {
+      setConnectionAttempt(attempt);
       setBackendStatus('connecting');
-      // Wider timeout for entry to handle cold-starts
-      const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(12000) });
-      if (res.ok) {
-        setBackendStatus('online');
-        setLandingFadeOut(true);
-        setTimeout(() => {
-          setShowLanding(false);
-          setIsConnecting(false);
-        }, 600);
-      } else {
-        setBackendStatus('offline');
-        setIsConnecting(false);
+      
+      try {
+        // Use a 5s timeout per attempt to keep the UI responsive
+        const res = await fetch(`${apiUrl}/`, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          setBackendStatus('online');
+          setLandingFadeOut(true);
+          setTimeout(() => {
+            setShowLanding(false);
+            setIsConnecting(false);
+          }, 600);
+          return; // Success!
+        }
+      } catch (e) {
+        console.warn(`[Entry] Connection attempt ${attempt} failed, retrying...`);
       }
-    } catch {
-      // If it fails immediately, try one more time before giving up on the landing page
-      setBackendStatus('offline');
-      setIsConnecting(false);
-      // We don't transition; the user stays on landing and can try again or see the status
+
+      // If we're here, it failed. Wait a bit before next attempt.
+      if (attempt < MAX_ENTRY_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
     }
+
+    // All attempts failed
+    setBackendStatus('offline');
+    setIsConnecting(false);
+    setConnectionAttempt(0);
   };
 
   // 💡 TO ANALYZE CUSTOM DATA LIMITS: This function grabs the user's preference and feeds it to the Backend
@@ -254,7 +278,7 @@ export default function Home() {
             >
               <span className="flex items-center gap-3">
                 {isConnecting ? (
-                  <><span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></span> Waking up AI...</>
+                  <><span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></span> {connectionAttempt > 1 ? `Waking up AI (${connectionAttempt}/12)...` : 'Waking up AI...'}</>
                 ) : (
                   <>
                     Launch Dashboard
@@ -268,8 +292,8 @@ export default function Home() {
 
             {/* Connection Status Message */}
             {backendStatus === 'offline' && !isConnecting && (
-              <p className="text-red-400/60 text-[10px] font-black uppercase tracking-[0.2em] mb-10 animate-pulse">
-                Backend is cold-starting... please try again in a few seconds
+              <p className="text-amber-400/60 text-[10px] font-black uppercase tracking-[0.2em] mb-10 animate-pulse">
+                Backend is cold-starting... autowake in progress. Please wait.
               </p>
             )}
 
