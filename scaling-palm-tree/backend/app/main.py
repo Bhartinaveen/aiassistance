@@ -344,6 +344,21 @@ async def analyze_single_conversation(conv_id: str):
     print(f"   ✅ On-demand analysis complete for {conv_id}.\n")
     return {"status": "success", "data": report}
 
+@app.post("/api/conversation/{conv_id}/variants")
+async def generate_chat_variants(conv_id: str):
+    """
+    Generates alternative "better" chat variants for a given conversation
+    and scores them.
+    """
+    from app.services.variant_generator import process_conversation_variants
+    
+    # We need the original report for baseline comparison.
+    cache = await get_cached_analysis()
+    original_report = cache.get(conv_id, {})
+    
+    result = await process_conversation_variants(conv_id, original_report)
+    return result
+
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     """

@@ -1,55 +1,56 @@
 # 🌌 Nvn..B OS: AI-Powered Behavioral Analytics & QA Suite
 
 ![Project Status](https://img.shields.io/badge/Status-Production--Ready-success?style=for-the-badge&logo=rocket)
-![AI Model](https://img.shields.io/badge/AI-Gemini%201.5%20Pro-orange?style=for-the-badge&logo=google-gemini)
+![AI Model](https://img.shields.io/badge/AI-Gemma%203%2027B-orange?style=for-the-badge&logo=google-gemini)
 ![Frontend](https://img.shields.io/badge/UI-Next.js%2014%20Glassmorphic-6366f1?style=for-the-badge&logo=next.js)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
 
-**Nvn..B OS** is a premium, consultant-grade AI Quality Assurance (QA) and Behavioral Analytics engine. Built for high-volume e-commerce brands, it transforms raw, unstructured chat logs into actionable intelligence reports, identifying sales friction and optimizing AI performance in real-time.
+**Nvn..B OS** is a premium, beautifully designed AI Quality Assurance (QA) and Behavioral Analytics platform. Built for e-commerce, it transforms raw customer chats into easy-to-understand intelligence reports. It helps you instantly see where customers get frustrated, flags security risks, and even shows you exactly how the AI *should* have responded to save the sale!
 
 ---
 
-## 🏛️ System Architecture
+## 🔥 Magical Features (Explained Simply!)
 
-The project follows a **Decoupled Intelligence Architecture**, separating data reconstruction from high-fidelity visualization:
+### 🛒 Live AI Shopping Assistant (The Chatbot)
+A built-in, intelligent customer service window that helps users find products, answers their questions, and adds items directly to their cart. Every conversation here is recorded and sent to the analytical brain for review.
 
-- **The "Story" Builder (Backend)**: Reconstructs fragmented chat sessions into chronological transcripts, linking events (clicks, views) with human-AI dialogue.
-- **The Multi-Level Analysis Engine**: Processes transcripts through three filters:
-  1.  **Zero-Shot Categorization**: Automatically discovers customer intent types.
-  2.  **Safety & Accuracy Scan**: Detects hallucinations and medical/legal compliance risks.
-  3.  **Behavioral Audit**: Scores user satisfaction and identifies dropout causes.
-- **The Analytics Dashboard (Frontend)**: A glassmorphic React interface that turns AI results into the "Model Weakness Radar" and "Issue Density Heatmaps."
+### 🧠 The Analytics Dashboard
+A stunning glass-like interface that takes hundreds of chat logs and turns them into visual data you can actually understand at a glance:
+- **Model Weakness Radar:** A 5-point graph showing how happy customers are, how accurate the AI is, and whether the AI is breaking any rules.
+- **Issue Density Heatmap:** Colorful boxes that show you exactly what problems happen most frequently (e.g., "Checkout Issues" or "Irrelevant Products").
+
+### ⚡ Auto-Generate Better Scenarios (AI Self-Correction)
+If a chat goes poorly and a customer drops off, simply click **"Auto-Generate Better Scenarios"**. 
+Our powerful backend AI (Gemma-3) will instantly rewrite the conversation, showing you a side-by-side split screen of what the chatbot *did* say versus what it *should have* said to make the customer happy.
+
+### 📍 Deep-Dive Behavior Heatmap 
+We don't just give you a single score. Our system charts the entire emotional journey of the chat from **Start → Middle → End**. The lines on the graph even change from Red (Angry) to Green (Happy) as the conversation improves!
+
+### 🔍 "Moment" Analysis (Plain English Insights)
+Don't want to read a 50-page technical log? Just click a dot on the Heatmap! The system will pop open a beautifully designed card explaining exactly what happened in **simple, everyday language**:
+- **What Went Wrong:** e.g., *"The user was frustrated because the agent didn't understand the refund policy."*
+- **How We Fixed It:** e.g., *"The new version remained calm and offered an instant store credit, saving the interaction."*
+
+### 🛡️ Security & Compliance Alerts
+Every single message is scanned for danger. If a chat leaks personal data, violates brand policy, or shares an unsafe link, a bright orange **Security Warning** badge will instantly pop up in the analytics telling you exactly what went wrong.
 
 ---
 
-## 🔥 Key Features
+## 🏛️ How It Works (Behind the Scenes)
 
-### 🚀 Real-Time Issues Feed
-Surfaces critical AI failures (hallucinations, loops, user drop-offs) with **Fix Recommendations** for developers.
-
-### 🧠 Model Weakness Radar
-A 5-axis performance graph analyzing:
-- **Satisfaction**: User happiness scores.
-- **Accuracy**: Inverse hallucination rate.
-- **Retention**: Resistance to user drop-offs.
-- **Compliance**: Adherence to brand guardrails.
-- **Engagement**: Quality of AI-user interaction.
-
-### 📊 Behavioral Intent Mapping
-Visualizes **Inquiry Intent** (Ordering, Supporting, Consulting) using dynamic bar charts, replacing generic pie charts for better readability.
-
-### 🌡️ Issue Density Heatmap (Treemap)
-A sophisticated grid visualization where the **area represents the frequency** of specific micro-issues (e.g., "medical claims", "pricing errors").
+1. **The Backend (FastAPI):** Gathers the chats and sends them to our massive AI brain (Gemma 3 27B). It breaks down the conversation logically without hardcoding anything.
+2. **The Evaluator:** Scans the text for hallucinations, missed sales, and user frustration.
+3. **The Simulator:** Creates a "perfect" version of the conversation that fixes the mistakes from the original.
+4. **The Frontend (Next.js):** Displays these highly complex AI operations using gorgeous colors, floating notifications, and effortless side-by-side comparison tables.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Core**: Python (FastAPI), React (Next.js 14)
-- **AI/LLM**: Google Generative AI (Gemini 1.5 Pro), LangChain
-- **Styling**: Tailwind CSS, Framer Motion (Animations)
-- **Charts**: Recharts (Custom Glassmorphic implementations)
-- **Persistence**: Local Persistent Caching & MongoDB Integration
+- **AI/LLM**: Google Generative AI Engine (Gemma 3 / Gemini Pro)
+- **Styling**: Tailwind CSS, Framer Motion (Animations), Glassmorphic UI
+- **Database**: MongoDB (Atlas) for persistent chat history and AI results
 
 ---
 
@@ -58,7 +59,7 @@ A sophisticated grid visualization where the **area represents the frequency** o
 ### **Prerequisites**
 - Python 3.9+ 
 - Node.js 18+ 
-- Google Gemini API Key
+- MongoDB URI & Google Gemini API Key
 
 ### **Step 1: Cloning the Project**
 ```bash
@@ -81,11 +82,12 @@ cd aiassistance/scaling-palm-tree
    ```bash
    pip install -r requirements.txt
    ```
-4. Create a `.env` file and add your API key:
+4. Create a `.env` file and add your keys:
    ```env
    GEMINI_API_KEY=your_gemini_key_here
+   MONGO_URI=your_mongo_connection_string
    ```
-5. Launch the backend:
+5. Launch the exact backend brain:
    ```bash
    uvicorn app.main:app --reload
    ```
@@ -93,13 +95,13 @@ cd aiassistance/scaling-palm-tree
 ### **Step 3: Frontend Configuration**
 1. Open a new terminal in the frontend folder: 
    ```bash
-   cd ../frontend 
+   cd frontend 
    ```
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the development server:
+3. Start the visual dashboard:
    ```bash
    npm run dev
    ```
@@ -108,27 +110,26 @@ Open [http://localhost:3000](http://localhost:3000) to view the **Nvn..B OS** Da
 
 ---
 
-## 📝 Analytical Methodology
-The system uses the **Senior QA Lead AI Persona** to audit sessions. Each analysis includes:
-- **Satisfaction Scoring (1-10)**: Calculated based on sentiment shift and query resolution.
-- **Hallucination Detection**: Comparison of AI output against verified catalog data.
-- **Dropout Reason Identification**: Root cause analysis for abandoned checkouts.
+## 📸 Project Gallery
 
----
-## images of the  this project
-## Landing page
+### Landing page
 ![alt text](screencapture-localhost-3000-2026-04-14-22_02_33.png)
-## Dashboard
+
+### Dashboard Overview
 ![alt text](screencapture-localhost-3000-2026-04-14-22_05_24.png)
-## chat analysis
+
+### Deep-Dive Chat Analysis
 ![alt text](image-2.png)
-## Ai agent chat with user
+
+### AI Agent Chat with User
 ![alt text](image-3.png)
 
+## new autogenerate chat
+![alt text](image-4.png)
+![alt text](image-5.png)
+![alt text](image-6.png)
+![alt text](image-7.png)
 
 
-
-
+---
 © 2026 **Nvn..B RESEARCH LABS** // All Rights Reserved
-
-
