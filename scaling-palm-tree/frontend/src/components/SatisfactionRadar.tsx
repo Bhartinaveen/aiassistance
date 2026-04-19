@@ -23,14 +23,15 @@ export default function SatisfactionRadar({ data }: { data: any[] }) {
     AgentFriction: parseFloat((item.totalAgentFrust / item.count).toFixed(1)) * 3
   }));
   
-  // Provide sample fallback if empty or too small
-  const displayData = chartData.length > 2 ? chartData : [
-    { subject: 'Electronics', Satisfaction: 8, UserFriction: 2, AgentFriction: 1 },
-    { subject: 'Fashion', Satisfaction: 4, UserFriction: 7, AgentFriction: 5 },
-    { subject: 'Luxury', Satisfaction: 9, UserFriction: 1, AgentFriction: 0 },
-    { subject: 'Health', Satisfaction: 2, UserFriction: 8, AgentFriction: 6 },
-    { subject: 'Unknown', Satisfaction: 5, UserFriction: 5, AgentFriction: 5 },
-  ];
+  if (chartData.length === 0) {
+    return (
+      <div className="h-80 w-full p-6 bg-indigo-950/20 shadow-[0_0_30px_rgba(79,70,229,0.15)] border border-indigo-500/20 rounded-2xl backdrop-blur-xl flex flex-col items-center justify-center gap-3">
+        <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+        <p className="text-indigo-200/50 text-sm font-bold">No category data available yet</p>
+        <p className="text-indigo-200/20 text-[10px] uppercase tracking-widest">Run an analysis to populate this chart</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-80 w-full p-6 bg-indigo-950/20 shadow-[0_0_30px_rgba(79,70,229,0.15)] border border-indigo-500/20 rounded-2xl backdrop-blur-xl">
@@ -39,7 +40,7 @@ export default function SatisfactionRadar({ data }: { data: any[] }) {
         Category Satisfaction Matrix
       </h3>
       <ResponsiveContainer width="100%" height="85%">
-        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={displayData}>
+        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
           <PolarGrid stroke="#6366f1" strokeOpacity={0.2} />
           <PolarAngleAxis dataKey="subject" tick={{ fill: '#a5b4fc', fontSize: 12, fontWeight: 500 }} />
           <PolarRadiusAxis angle={30} domain={[0, 10]} max={10} tick={false} axisLine={false} />

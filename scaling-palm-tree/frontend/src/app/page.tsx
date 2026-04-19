@@ -196,11 +196,22 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (selectedBrand === "All Brands") {
-      setData(allData);
-    } else {
-      setData(allData.filter(d => (d.widget_id === selectedBrand || d.widgetId === selectedBrand)));
+    const isFlagged = (item: any) => {
+      if (!item.evaluation) return false;
+      const e = item.evaluation;
+      return e.Hallucination_Detected === true || 
+             e.Checkout_Friction_Detected === true || 
+             (e.Agent_Message_Problem && e.Agent_Message_Problem !== "None") || 
+             (e.User_Frustration_Point && e.User_Frustration_Point !== "None");
+    };
+
+    let filtered = allData.filter(isFlagged);
+
+    if (selectedBrand !== "All Brands") {
+      filtered = filtered.filter(d => (d.widget_id === selectedBrand || d.widgetId === selectedBrand));
     }
+    
+    setData(filtered);
   }, [selectedBrand, allData]);
 
   const brands = Array.from(new Set(allData.map(d => d.widget_id || d.widgetId))).filter(Boolean);
