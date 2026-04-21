@@ -58,8 +58,8 @@ export default function ModelWeaknessRadar({ data }: { data: any[] }) {
         <p className="text-[10px] text-white/40 mt-0.5 max-w-[400px]">Scores the conversational agent's core capabilities out of 10 to highlight strengths and areas for improvement.</p>
       </div>
       
-      <div className="flex-1 min-h-0 relative">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
             {/* Background dashed lines for score visualization */}
             <YAxis 

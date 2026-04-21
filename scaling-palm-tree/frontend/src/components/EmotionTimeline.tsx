@@ -22,7 +22,7 @@ export default function EmotionTimeline({ data }: { data: any[] }) {
         <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse"></span>
         Emotional Fluctuation per Session
       </h3>
-      <ResponsiveContainer width="100%" height="80%">
+      <ResponsiveContainer width="100%" height={260}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#4f46e5" strokeOpacity={0.15} vertical={false} />
           <XAxis dataKey="name" stroke="#818cf8" fontSize={11} tickLine={false} axisLine={false} />

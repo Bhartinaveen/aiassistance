@@ -60,8 +60,8 @@ export default function ProductInterestCloud({ data }: { data: any[] }) {
       <div className="flex flex-col md:flex-row flex-1 min-h-[300px] mt-4 items-center">
         {radialData.length > 0 ? (
           <>
-            <div className="w-full md:w-3/5 h-[250px] md:h-full relative">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full md:w-3/5" style={{ height: 250 }}>
+              <ResponsiveContainer width="100%" height={250}>
                 <RadialBarChart 
                   cx="50%" 
                   cy="50%" 

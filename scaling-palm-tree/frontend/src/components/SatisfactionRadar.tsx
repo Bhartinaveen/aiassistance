@@ -39,7 +39,7 @@ export default function SatisfactionRadar({ data }: { data: any[] }) {
         <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
         Category Satisfaction Matrix
       </h3>
-      <ResponsiveContainer width="100%" height="85%">
+      <ResponsiveContainer width="100%" height={260}>
         <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
           <PolarGrid stroke="#6366f1" strokeOpacity={0.2} />
           <PolarAngleAxis dataKey="subject" tick={{ fill: '#a5b4fc', fontSize: 12, fontWeight: 500 }} />

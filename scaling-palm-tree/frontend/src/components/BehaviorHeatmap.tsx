@@ -120,7 +120,7 @@ function BehaviorChart({
 
       {/* Chart */}
       <div style={{ height: 220, overflow: "visible" }} className="relative z-10">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={220}>
           <AreaChart 
             data={data} 
             margin={{ top: 30, right: 80, left: -18, bottom: 0 }}

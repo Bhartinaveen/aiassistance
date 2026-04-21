@@ -51,9 +51,9 @@ export default function InquiryIntentChart({ data }: { data: any[] }) {
         </div>
       </div>
       
-      <div className="flex-1 min-h-[300px]">
+      <div style={{ height: 300 }}>
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
                 data={chartData}

@@ -28,8 +28,8 @@ export default function BrandComparisonChart({ data }: { data: any[] }) {
   return (
     <div className="w-full h-full min-h-[300px] flex flex-col pt-4">
       <h3 className="text-white/70 text-sm font-medium px-6 mb-2">Cross-Brand Error Comparison (%)</h3>
-      <div className="flex-1">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: 300 }}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
             <XAxis dataKey="name" stroke="#ffffff50" fontSize={12} />
