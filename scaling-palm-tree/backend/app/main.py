@@ -54,10 +54,7 @@ async def initialize_state():
     # 1. Initialize MongoDB connection and load conversations/messages into memory
     await initialize_data()
 
-    # 2. Clear old analysis cache so every restart gives FRESH results on next Scan
-    await clear_cache()
-    print(f"🗑️  Previous analysis cache cleared — ready for fresh scan.")
-    print(f"\n✅ Backend is online. Open the dashboard and click Scan to begin analysis.\n")
+    print(f"\n✅ Backend is online. Cached analyses will be preserved. Open the dashboard to view results.\n")
 
 # Allow CORS for Next.js frontend 
 app.add_middleware(
@@ -71,6 +68,12 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the AI QA & Analytics Engine API"}
+
+@app.get("/api/debug/convs")
+async def debug_convs():
+    from app.services.data_orchestration import _conversations_cache
+    return {"convs": _conversations_cache[:5]}
+
 
 @app.get("/api/ping")
 def ping():
@@ -143,6 +146,20 @@ async def stop_analysis():
 async def get_messages(conv_id: str):
     messages = await get_conversation_messages(conv_id)
     return {"status": "success", "messages": messages}
+
+@app.get("/api/analysis/data")
+async def get_analysis_data():
+    """
+    Directly fetches all analyzed results from the database cache.
+    Used by the dashboard to automatically display flagged conversations
+    without running a new analysis.
+    """
+    from app.services.cache_manager import get_all_cached_reports
+    reports = await get_all_cached_reports()
+    
+    # We optionally can filter on the backend, or rely on the frontend filtering.
+    # The frontend is already filtering for isFlagged based on the LLM evaluation.
+    return {"status": "success", "data": reports}
 
 @app.get("/api/analysis/run")
 async def run_analysis(limit: int = 0):
@@ -221,6 +238,18 @@ async def run_analysis(limit: int = 0):
             print(f"   ⏭️  SKIPPED — Empty transcript")
             _analysis_progress["skipped_ids"].append(conv_id)
             _analysis_progress["done"] += 1 # Increment done so counter reaches total
+            
+            report = {
+                "conversation_id": conv_id,
+                "widget_id": widget_id,
+                "is_empty": True,
+                "skip_reason": "Empty transcript (0 user messages)",
+                "dropoff": is_dropoff,
+                "loop_detected": loop_detected,
+                "evaluation": None
+            }
+            await save_to_cache(conv_id, report)
+            reports.append(report)
             continue
         
         new_count += 1
@@ -231,6 +260,18 @@ async def run_analysis(limit: int = 0):
         if evaluation is None:
             print(f"   ⚠️  Skipping conv {conv_id} — LLM returned no result (API failure).")
             _analysis_progress["done"] += 1
+            _analysis_progress["skipped_ids"].append(conv_id)
+            report = {
+                "conversation_id": conv_id,
+                "widget_id": widget_id,
+                "is_empty": True,
+                "skip_reason": "LLM API Failure (Returned None)",
+                "dropoff": is_dropoff,
+                "loop_detected": loop_detected,
+                "evaluation": None
+            }
+            await save_to_cache(conv_id, report)
+            reports.append(report)
             await asyncio.sleep(2)
             continue
 
@@ -282,12 +323,24 @@ async def run_analysis(limit: int = 0):
     elif cached_count > 0:
         print(f"   💡 Incremental run: only {new_count} new conversations sent to Gemma 3 27B.")
     if reports:
-        scores = [r.get("evaluation", {}).get("User_Satisfaction_Score", 0) for r in reports]
-        hall_count = sum(1 for r in reports if r.get("evaluation", {}).get("Hallucination_Detected") == True)
+        valid_reports = [r for r in reports if isinstance(r.get("evaluation"), dict)]
+        scores = []
+        for r in valid_reports:
+            try:
+                scores.append(float(r["evaluation"].get("User_Satisfaction_Score", 0)))
+            except (ValueError, TypeError):
+                pass
+                
+        hall_count = sum(1 for r in valid_reports if r["evaluation"].get("Hallucination_Detected") == True)
         drop_count = sum(1 for r in reports if r.get("dropoff") == True)
-        print(f"   Avg Satisfaction:     {sum(scores)/len(scores):.1f}/10")
-        print(f"   Hallucination Rate:   {hall_count}/{len(reports)} ({hall_count/len(reports)*100:.0f}%)")
-        print(f"   Dropout Rate:         {drop_count}/{len(reports)} ({drop_count/len(reports)*100:.0f}%)")
+        
+        avg_score = sum(scores)/len(scores) if scores else 0.0
+        hall_rate = (hall_count / len(valid_reports) * 100) if valid_reports else 0.0
+        drop_rate = (drop_count / len(reports) * 100) if reports else 0.0
+        
+        print(f"   Avg Satisfaction:     {avg_score:.1f}/10")
+        print(f"   Hallucination Rate:   {hall_count}/{len(valid_reports)} ({hall_rate:.0f}%)")
+        print(f"   Dropout Rate:         {drop_count}/{len(reports)} ({drop_rate:.0f}%)")
     print(f"{'='*60}\n")
         
     return {"status": "success", "data": reports, "skipped_ids": _analysis_progress["skipped_ids"]}

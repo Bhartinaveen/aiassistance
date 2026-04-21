@@ -30,7 +30,9 @@ export default function Home() {
   const [isStopping, setIsStopping] = useState(false);
   // progress holds the real-time analysis state polled from the backend
   const [progress, setProgress] = useState<{ running: boolean; total: number; done: number; stopped: boolean; skipped_ids?: string[] } | null>(null);
-  const [skippedIds, setSkippedIds] = useState<string[]>([]);
+  const [skippedRecords, setSkippedRecords] = useState<{id: string, reason: string}[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const AUDIT_PAGE_SIZE = 6;
   // backendStatus: null = unknown, 'connecting' = retrying, 'online' = ok, 'offline' = unreachable
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'online' | 'offline' | null>(null);
   const [retryCountdown, setRetryCountdown] = useState<number>(0);
@@ -69,6 +71,8 @@ export default function Home() {
           setTimeout(() => {
             setShowLanding(false);
             setIsConnecting(false);
+            // Automatically fetch data instead of showing "Ready to Analyze"
+            loadDashboardData();
           }, 600);
           return; // Success!
         }
@@ -86,6 +90,29 @@ export default function Home() {
     setBackendStatus('offline');
     setIsConnecting(false);
     setConnectionAttempt(0);
+  };
+
+  // ── Auto-Load Stored Data ──────────────────────────────────────────────────
+  // Fetches already analyzed data directly from MongoDB without triggering LLMs
+  const loadDashboardData = async () => {
+    setLoading(true);
+    const apiUrl = getApiUrl();
+      fetch(`${apiUrl}/api/analysis/data`)
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.status === "success" && resData.data.length > 0) {
+          setAllData(resData.data);
+          setData(resData.data);
+          setBackendStatus('online');
+        } else {
+          // If no data is cached yet, do we want to run an initial analysis?
+          // Per the user's instruction, we just show what's there (or empty state).
+          setAllData([]);
+          setData([]);
+        }
+      })
+      .catch(e => console.warn("Failed to load cached data:", e))
+      .finally(() => setLoading(false));
   };
 
   // 💡 TO ANALYZE CUSTOM DATA LIMITS: This function grabs the user's preference and feeds it to the Backend
@@ -134,15 +161,15 @@ export default function Home() {
         const d = await res.json();
         if (d.status === "success") {
           setProgress(d.progress);
-          if (d.progress.skipped_ids) setSkippedIds(d.progress.skipped_ids);
+          // Ignore live skipped_ids in progress as we'll rely on the final DB payload which has reasons attached
           if (!d.progress.running) clearInterval(pollInterval);
         }
       } catch { clearInterval(pollInterval); }
     }, 1000);
 
-    // ── Step 3: Trigger the main analysis run (allow up to 10 min for Gemma 3 27B) ──
-    // Gemma 3 27B can take several minutes for 20 conversations — we never abort it early.
-    // The progress poller above keeps the UI updated while we wait.
+    // ── Step 3: Trigger the fetching of analysis data ──
+    // Instead of forcing a run that analyzes all by default, we just call the endpoint
+    // to get the stored results. The endpoint should already contain all analyzed flags.
     fetch(`${apiUrl}/api/analysis/run?limit=${targetLimit}`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -152,7 +179,6 @@ export default function Home() {
         if (resData.status === "success") {
           setAllData(resData.data);
           setData(resData.data);
-          if (resData.skipped_ids) setSkippedIds(resData.skipped_ids);
           setBackendStatus('online');
         }
       })
@@ -183,7 +209,8 @@ export default function Home() {
     const apiUrl = getApiUrl();
     
     // Calls DELETE /api/analysis/clear-cache which: (1) wipes MongoDB cache, (2) re-runs fresh Gemini analysis
-    fetch(`${apiUrl}/api/analysis/clear-cache?limit=${limitInput}`, { method: "DELETE" })
+    const limitParam = Number(limitInput) > 0 ? Number(limitInput) : 0;
+    fetch(`${apiUrl}/api/analysis/clear-cache?limit=${limitParam}`, { method: "DELETE" })
       .then(res => res.json())
       .then(resData => {
         if (resData.status === "success") {
@@ -196,22 +223,30 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const isFlagged = (item: any) => {
-      if (!item.evaluation) return false;
-      const e = item.evaluation;
-      return e.Hallucination_Detected === true || 
-             e.Checkout_Friction_Detected === true || 
-             (e.Agent_Message_Problem && e.Agent_Message_Problem !== "None") || 
-             (e.User_Frustration_Point && e.User_Frustration_Point !== "None");
-    };
-
-    let filtered = allData.filter(isFlagged);
+    let filtered = allData;
 
     if (selectedBrand !== "All Brands") {
       filtered = filtered.filter(d => (d.widget_id === selectedBrand || d.widgetId === selectedBrand));
     }
     
-    setData(filtered);
+    // Parse empty/skipped conversations from the payload and set them into skippedRecords state
+    const emptyConversations = filtered
+        .filter(d => d.is_empty)
+        .map(d => ({
+            id: d.conversation_id,
+            reason: d.skip_reason || "Empty transcript / No valid data"
+        }));
+
+    if (emptyConversations.length > 0) {
+      // Deduplicate by ID
+      const uniqueEmpty = Array.from(new Map(emptyConversations.map(item => [item.id, item])).values());
+      setSkippedRecords(uniqueEmpty);
+    } else {
+      setSkippedRecords([]);
+    }
+
+    // Set chart data exclusively to non-empty conversations
+    setData(filtered.filter(d => !d.is_empty));
   }, [selectedBrand, allData]);
 
   const brands = Array.from(new Set(allData.map(d => d.widget_id || d.widgetId))).filter(Boolean);
@@ -399,6 +434,7 @@ export default function Home() {
                   setLimitInput("");
                   fetchAnalysisData(0);
                 }}
+                title="Scan All unanalyzed data"
                 className="px-4 py-2 flex-grow sm:flex-grow-0 rounded-xl bg-white/5 text-white/70 text-[10px] font-black tracking-[0.2em] uppercase hover:bg-white/20 hover:text-white transition-all duration-300 border border-white/5"
               >
                 Scan All
@@ -483,7 +519,7 @@ export default function Home() {
               </p>
             </div>
             <button
-              onClick={() => { setLoading(true); fetchAnalysisData(Number(limitInput) || 0); }}
+              onClick={() => { setLoading(true); loadDashboardData(); }}
               className="mt-2 px-6 py-2.5 rounded-xl bg-primary/20 text-primary text-[10px] font-black tracking-[0.2em] uppercase hover:bg-primary hover:text-black transition-all duration-300 border border-primary/30"
             >
               ↺ Retry Connection
@@ -518,52 +554,30 @@ export default function Home() {
           </div>
 
         ) : allData.length === 0 ? (
-          // ── Welcome / Empty State — shown when no analysis has been run yet ──
+          // ── Empty State — shown when no data is returned from DB ──
           <div className="flex flex-col items-center justify-center min-h-[65vh] gap-10 animate-entry">
             <div className="text-center max-w-xl">
               <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2rem] glass-premium border border-primary/30 glow-primary mb-8">
-                <Cpu className="text-primary" size={40} />
+                <Activity className="text-primary" size={40} />
               </div>
-              <h2 className="text-4xl font-black text-white tracking-tight mb-4">Ready to Analyze</h2>
+              <h2 className="text-4xl font-black text-white tracking-tight mb-4">No Data Detected</h2>
               <p className="text-white/40 text-sm leading-relaxed">
-                Enter the number of conversations you want to review, then click <span className="text-primary font-bold">Scan</span> to start the AI analysis.
-                You can always increase the number and scan again to load more — previously analyzed data is cached and won't use extra tokens.
+                We couldn't find any analyzed conversations in the database.
               </p>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex items-center gap-3 p-3 pl-6 rounded-2xl glass-premium border border-primary/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]">
-                <span className="text-white/50 text-xs font-black uppercase tracking-widest whitespace-nowrap">How many?</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={limitInput}
-                  onChange={(e) => setLimitInput(Number(e.target.value) || "")}
-                  placeholder="e.g. 20"
-                  className="bg-transparent text-2xl font-black text-primary outline-none w-24 text-center border-none p-0 focus:ring-0 placeholder:text-primary/20"
-                />
-              </div>
-              <button
-                onClick={() => { if (Number(limitInput) > 0) fetchAnalysisData(Number(limitInput)); }}
-                disabled={!limitInput || Number(limitInput) < 1}
-                className="px-8 py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-[0.2em] hover:scale-105 transition-all glow-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+            <button
+                onClick={() => { loadDashboardData(); }}
+                className="px-8 py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-[0.2em] hover:scale-105 transition-all glow-primary"
               >
-                Start Analysis
-              </button>
-              <button
-                onClick={() => { setLimitInput(0); fetchAnalysisData(0); }}
-                className="px-8 py-4 rounded-2xl glass border border-white/10 text-white/50 font-black text-sm uppercase tracking-[0.2em] hover:text-white hover:border-white/30 transition-all"
-              >
-                Analyze All
-              </button>
-            </div>
-
+                Refresh Data
+            </button>
           </div>
 
         ) : (
           <div className="space-y-8 pb-32">
-            {/* Top Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-entry" style={{ animationDelay: '0.1s' }}>
+            {/* Top Stats Bar - horizontally scrollable on mobile */}
+            <div className="overflow-x-auto pb-2 animate-entry" style={{ animationDelay: '0.1s' }}>
+              <div className="flex md:grid md:grid-cols-3 gap-4 min-w-max md:min-w-0">
               {(() => {
                 const total = data.length || 1;
                 const isTrue = (v: any) => v === true || v === "true" || v === "yes" || v === 1;
@@ -580,7 +594,7 @@ export default function Home() {
                   { label: "User Dropout Rate", value: `${dropoffRate}%`, icon: Activity, color: "text-orange-400" },
                   { label: "Total Conversations", value: `${data.length}`, icon: Info, color: "text-blue-400" },
                 ].map((stat, i) => (
-                  <div key={i} className="p-4 rounded-3xl glass-premium flex items-center justify-between group hover:border-primary/30 transition-all cursor-default">
+                  <div key={i} className="p-4 rounded-3xl glass-premium flex items-center justify-between group hover:border-primary/30 transition-all cursor-default w-64 md:w-auto">
                     <div>
                       <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">{stat.label}</span>
                       <span className="text-xl font-black text-white/90">{stat.value}</span>
@@ -589,6 +603,7 @@ export default function Home() {
                   </div>
                 ));
               })()}
+              </div>
             </div>
 
             {/* Main Visualizations Grid */}
@@ -642,24 +657,110 @@ export default function Home() {
               <ProblemConversationsList data={data} />
             </div>
 
-            {/* skippedIds Audit Section - Positioned just above the footer */}
-            {skippedIds.length > 0 && (
-              <div className="animate-entry mt-12 mb-4 p-8 rounded-[2.5rem] glass border border-red-500/10" style={{ animationDelay: '0.75s' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-1.5 h-4 rounded-full bg-red-400 opacity-50"></div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-red-400/60">Data Integrity Audit</h3>
-                  <span className="text-[10px] text-white/20 ml-auto font-mono uppercase tracking-widest">{Array.from(new Set(skippedIds)).length} Empty Transactions Detected</span>
+            {/* Data Integrity Audit Section - Always visible, just above footer */}
+            <div className="animate-entry mt-16 mb-4 p-8 rounded-[2.5rem] glass border border-white/5 bg-black/20" style={{ animationDelay: '0.75s' }}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`w-1.5 h-4 rounded-full ${skippedRecords.length > 0 ? 'bg-red-400' : 'bg-white/20'}`}></div>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">Data Integrity Audit</h3>
+                <div className="ml-auto flex items-center gap-4">
+                  <span className="text-[10px] text-white/20 font-mono uppercase tracking-widest">
+                    {data.length} Validated
+                  </span>
+                  <span className={`text-[10px] font-mono uppercase tracking-widest ${skippedRecords.length > 0 ? 'text-red-400/60' : 'text-white/20'}`}>
+                    {skippedRecords.length} Skipped
+                  </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(new Set(skippedIds)).map(id => (
-                    <span key={id} className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/5 text-white/40 text-[9px] font-mono hover:border-red-500/20 transition-colors">
-                      {id}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-4 text-[9px] text-white/20 italic">Note: These conversation IDs were skipped because they contain 0 messages or lack valid transcript data.</p>
               </div>
-            )}
+
+              {skippedRecords.length > 0 ? (() => {
+                const auditTotalPages = Math.max(1, Math.ceil(skippedRecords.length / AUDIT_PAGE_SIZE));
+                const auditPaged = skippedRecords.slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE);
+                return (
+                  <>
+                    {/* Horizontally scrollable on mobile, grid on desktop */}
+                    <div className="overflow-x-auto pb-2">
+                      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-max md:min-w-0">
+                        {auditPaged.map((record, idx) => (
+                          <div key={idx} className="w-80 md:w-auto px-6 py-5 rounded-[2rem] glass-premium border border-red-500/10 flex flex-col gap-3 hover:border-red-500/30 transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 blur-[40px] -mr-12 -mt-12 group-hover:bg-red-500/10 transition-colors" />
+                            <div className="flex flex-col relative z-10">
+                              <span className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Session ID</span>
+                              <span className="text-white/70 text-[11px] font-mono tracking-tight break-all">{record.id}</span>
+                            </div>
+                            <div className="h-px w-full bg-white/5 relative z-10" />
+                            <div className="flex items-start gap-3 relative z-10">
+                              <div className="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] animate-pulse" />
+                              <div className="flex flex-col gap-1">
+                                <span className="text-red-400/60 uppercase tracking-[0.2em] text-[10px] font-black">Skip Justification</span>
+                                <span className="text-white/70 text-[11px] leading-relaxed font-medium">{record.reason}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pagination */}
+                    {auditTotalPages > 1 && (
+                      <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6">
+                        <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-black">
+                          Showing {(auditPage - 1) * AUDIT_PAGE_SIZE + 1}–{Math.min(auditPage * AUDIT_PAGE_SIZE, skippedRecords.length)} of {skippedRecords.length}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                            disabled={auditPage === 1}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white/50 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-white/5"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
+                            Prev
+                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {Array.from({ length: auditTotalPages }, (_, i) => i + 1).map(page => (
+                              <button
+                                key={page}
+                                onClick={() => setAuditPage(page)}
+                                className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${
+                                  page === auditPage
+                                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                    : 'bg-white/5 text-white/30 hover:bg-white/10 border border-white/5'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))}
+                            disabled={auditPage === auditTotalPages}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-[10px] font-black text-red-400 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-red-500/20"
+                          >
+                            Next
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })() : (
+                <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-white/5 rounded-[2rem] bg-white/[0.02]">
+                  <Activity size={24} className="text-white/10 mb-4" />
+                  <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest text-center">No Skipped Conversations Detected</p>
+                  <p className="text-white/20 text-[10px] mt-2 text-center max-w-sm leading-relaxed">
+                    All processed data in your current database is valid. If you recently updated your session data, click <span className="text-red-400/60 font-black">RE-SCAN</span> to detect and categorize any newly skipped empty transactions.
+                  </p>
+                </div>
+              )}
+              
+              <div className="mt-8 flex justify-between items-center text-[9px] text-white/15">
+                <p className="italic">Note: These conversation IDs were dynamically skipped by the backend analysis engine.</p>
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span> Validated</span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500/40"></span> Skipped</span>
+                </div>
+              </div>
+            </div>
 
             {/* Refined Compact Footer */}
             <footer className="mt-8 pt-10 pb-10 border-t border-white/5 relative animate-entry" style={{ animationDelay: '0.8s' }}>

@@ -34,10 +34,10 @@ export default function InquiryIntentChart({ data }: { data: any[] }) {
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    if (percent < 0.05) return null; // Hide labels for very small slices
+    // Removed the threshold check so even small slices show their percentage
     return (
       <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.8)' }}>
-        {`${(percent * 100).toFixed(0)}%`}
+        {percent > 0 ? `${(percent * 100).toFixed(0)}%` : ''}
       </text>
     );
   };

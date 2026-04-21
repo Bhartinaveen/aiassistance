@@ -14,6 +14,7 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
   const [onDemandList, setOnDemandList] = useState<any[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'high' | 'medium'>('all');
 
   const toggleExpand = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -47,12 +48,32 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
     );
   };
 
+  // ── Severity Classifier ───────────────────────────────────────────────────
+  // Critical: confirmed hallucination OR checkout friction breakdown
+  // High:     low score (< 6) OR both agent problem + frustration together
+  // Medium:   any single soft signal (just agent problem or just frustration)
+  const getSeverity = (item: any): 'critical' | 'high' | 'medium' => {
+    if (!item.evaluation) return 'medium';
+    const e = item.evaluation;
+    const score = parseFloat(e.User_Satisfaction_Score);
+    if (e.Hallucination_Detected === true || e.Checkout_Friction_Detected === true) return 'critical';
+    const hasAgentProblem = e.Agent_Message_Problem && e.Agent_Message_Problem !== 'None';
+    const hasFrustration = e.User_Frustration_Point && e.User_Frustration_Point !== 'None';
+    if ((!isNaN(score) && score < 6) || (hasAgentProblem && hasFrustration)) return 'high';
+    return 'medium';
+  };
+
   const flaggedData = uniqueData.filter(isFlagged);
 
   const filteredData = flaggedData.filter(d => {
-    if (!searchQuery) return true;
-    return d.conversation_id?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = !searchQuery || d.conversation_id?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSeverity = severityFilter === 'all' || getSeverity(d) === severityFilter;
+    return matchesSearch && matchesSeverity;
   });
+
+  const criticalCount = flaggedData.filter(d => getSeverity(d) === 'critical').length;
+  const highCount = flaggedData.filter(d => getSeverity(d) === 'high').length;
+  const mediumCount = flaggedData.filter(d => getSeverity(d) === 'medium').length;
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
   const pagedData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -128,6 +149,30 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
               <span className="text-red-400 mr-2">{filteredData.length}</span> Issues Found
             </div>
           </div>
+        </div>
+
+        {/* ── Severity Filter Pills ── */}
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mr-2">Filter by severity:</span>
+          {([
+            { key: 'all',      label: 'All Issues',  count: flaggedData.length,  active: 'bg-white/10 text-white border-white/20',      inactive: 'bg-white/5 text-white/30 border-white/5' },
+            { key: 'critical', label: '🔴 Critical',  count: criticalCount,       active: 'bg-red-500/20 text-red-400 border-red-500/40',  inactive: 'bg-white/5 text-white/30 border-white/5' },
+            { key: 'high',     label: '🟠 High',      count: highCount,           active: 'bg-orange-500/20 text-orange-400 border-orange-500/40', inactive: 'bg-white/5 text-white/30 border-white/5' },
+            { key: 'medium',   label: '🟡 Medium',    count: mediumCount,         active: 'bg-amber-500/20 text-amber-400 border-amber-500/40',   inactive: 'bg-white/5 text-white/30 border-white/5' },
+          ] as const).map(f => (
+            <button
+              key={f.key}
+              onClick={() => { setSeverityFilter(f.key); setCurrentPage(1); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                severityFilter === f.key ? f.active : f.inactive
+              }`}
+            >
+              {f.label}
+              <span className={`px-1.5 py-0.5 rounded-lg text-[9px] ${
+                severityFilter === f.key ? 'bg-white/20' : 'bg-white/5'
+              }`}>{f.count}</span>
+            </button>
+          ))}
         </div>
 
         {/* ── Cards Grid (5 per page) ── */}
@@ -258,48 +303,69 @@ export default function ProblemConversationsList({ data }: { data: any[] }) {
         )}
 
         {/* ── Pagination ── */}
-        {totalPages > 1 && (
-          <div className="mt-10 flex items-center justify-between border-t border-white/10 pt-8">
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-black">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)} of {filteredData.length}
-            </span>
+        {totalPages > 1 && (() => {
+          // Build a windowed set of page numbers: always show first, last, current±2, with ellipsis gaps
+          const delta = 2;
+          const range: (number | '...')[] = [];
+          const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white/50 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-white/5"
-              >
-                <ChevronLeft size={14} /> Prev
-              </button>
+          let prev = 0;
+          for (const page of pages) {
+            const nearCurrent = page >= currentPage - delta && page <= currentPage + delta;
+            const isEdge = page === 1 || page === totalPages;
+            if (nearCurrent || isEdge) {
+              if (prev && page - prev > 1) range.push('...');
+              range.push(page);
+              prev = page;
+            }
+          }
 
-              {/* Page pills */}
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${
-                      page === currentPage
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        : 'bg-white/5 text-white/30 hover:bg-white/10 border border-white/5'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+          return (
+            <div className="mt-10 flex items-center justify-between border-t border-white/10 pt-8 gap-4">
+              <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-black shrink-0">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)} / {filteredData.length}
+              </span>
+
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white/50 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-white/5 shrink-0"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  {range.map((item, i) =>
+                    item === '...' ? (
+                      <span key={`ellipsis-${i}`} className="w-8 text-center text-white/20 text-[10px] font-black">…</span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setCurrentPage(item as number)}
+                        className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all shrink-0 ${
+                          item === currentPage
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-white/5 text-white/30 hover:bg-white/10 border border-white/5'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-[10px] font-black text-red-400 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-red-500/20 shrink-0"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
               </div>
-
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-[10px] font-black text-red-400 uppercase tracking-[0.2em] disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-red-500/20"
-              >
-                Next <ChevronRight size={14} />
-              </button>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 
