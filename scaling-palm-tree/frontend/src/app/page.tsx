@@ -94,25 +94,38 @@ export default function Home() {
 
   // ── Auto-Load Stored Data ──────────────────────────────────────────────────
   // Fetches already analyzed data directly from MongoDB without triggering LLMs
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (attempt = 0) => {
+    const MAX_LOAD_RETRIES = 5;
     setLoading(true);
     const apiUrl = getApiUrl();
-      fetch(`${apiUrl}/api/analysis/data`)
-      .then(res => res.json())
-      .then(resData => {
-        if (resData.status === "success" && resData.data.length > 0) {
-          setAllData(resData.data);
-          setData(resData.data);
-          setBackendStatus('online');
-        } else {
-          // If no data is cached yet, do we want to run an initial analysis?
-          // Per the user's instruction, we just show what's there (or empty state).
-          setAllData([]);
-          setData([]);
-        }
-      })
-      .catch(e => console.warn("Failed to load cached data:", e))
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch(`${apiUrl}/api/analysis/data`, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const resData = await res.json();
+      if (resData.status === "success" && resData.data.length > 0) {
+        setAllData(resData.data);
+        setData(resData.data);
+        setBackendStatus('online');
+      } else if (resData.status === "success" && resData.data.length === 0) {
+        // DB has no data yet — show empty state
+        setAllData([]);
+        setData([]);
+      } else {
+        throw new Error('Unexpected response');
+      }
+    } catch (e: any) {
+      console.warn(`[Data] Load attempt ${attempt + 1} failed:`, e?.message);
+      if (attempt < MAX_LOAD_RETRIES) {
+        // Wait 2s then retry
+        setTimeout(() => loadDashboardData(attempt + 1), 2000);
+        return; // keep loading=true while retrying
+      }
+      // All retries exhausted
+      setAllData([]);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 💡 TO ANALYZE CUSTOM DATA LIMITS: This function grabs the user's preference and feeds it to the Backend

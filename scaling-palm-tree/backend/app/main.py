@@ -154,12 +154,22 @@ async def get_analysis_data():
     Used by the dashboard to automatically display flagged conversations
     without running a new analysis.
     """
+    from app.services.data_orchestration import ensure_data_loaded
     from app.services.cache_manager import get_all_cached_reports
-    reports = await get_all_cached_reports()
-    
-    # We optionally can filter on the backend, or rely on the frontend filtering.
-    # The frontend is already filtering for isFlagged based on the LLM evaluation.
-    return {"status": "success", "data": reports}
+
+    # Ensure DB connection is alive (handles cold starts gracefully)
+    try:
+        await ensure_data_loaded()
+    except Exception as e:
+        print(f"⚠️  ensure_data_loaded failed: {e}")
+
+    try:
+        reports = await get_all_cached_reports()
+        return {"status": "success", "data": reports}
+    except Exception as e:
+        print(f"❌  get_all_cached_reports failed: {e}")
+        return {"status": "success", "data": []}  # Return empty rather than 500
+
 
 @app.get("/api/analysis/run")
 async def run_analysis(limit: int = 0):
